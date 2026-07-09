@@ -1,0 +1,2399 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard hiệu quả đầu tư v7</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --blue: #2E75B6;
+      --orange: #ED7D31;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #dce6f2;
+      --soft-blue: #eaf3fb;
+      --soft-orange: #fff1e8;
+      --soft-green: #eaf7ef;
+      --soft-red: #fff0f0;
+      --panel: rgba(255, 255, 255, 0.92);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        linear-gradient(180deg, #f5f9fd 0%, #fffaf6 48%, #f7fbf8 100%);
+      color: var(--ink);
+      letter-spacing: 0;
+    }
+
+    .shell { max-width: 1440px; margin: 0 auto; }
+    .dashboard-shell {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dashboard-shell > * { order: 20; }
+    .dashboard-shell > header { order: 1; }
+    .dashboard-shell > #dropzone { order: 2; }
+    .dashboard-shell > #messageBox { order: 3; }
+    .dashboard-shell > #positionSizeTool { order: 4; }
+    .dashboard-shell > #dashboardFilters { order: 5; }
+    .dashboard-shell > #capitalPanel { order: 6; }
+    .dashboard-shell > #summaryPositionSection { order: 7; }
+    .dashboard-shell > #transactionLogSection { order: 8; }
+    .dashboard-shell > #decisionPanel { order: 9; }
+    .dashboard-shell > #kpiSection { order: 10; }
+    .dashboard-shell > #chartSection { order: 11; }
+    .dashboard-shell > #explainSection { order: 12; }
+    .dashboard-shell:not(.has-data) > #dashboardFilters,
+    .dashboard-shell:not(.has-data) > #capitalPanel,
+    .dashboard-shell:not(.has-data) > #decisionPanel,
+    .dashboard-shell:not(.has-data) > #kpiSection,
+    .dashboard-shell:not(.has-data) > .dashboard-report {
+      display: none !important;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(46, 117, 182, 0.08);
+    }
+
+    .kpi-card {
+      min-height: 126px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: 0 8px 22px rgba(23, 32, 51, 0.05);
+    }
+
+    .metric-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .control {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+      transition: border 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    .control:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(46, 117, 182, 0.16);
+    }
+
+    .filter-panel {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 14px 30px rgba(23, 32, 51, 0.1);
+    }
+
+    .dropzone {
+      border: 1.5px dashed rgba(46, 117, 182, 0.48);
+      background: linear-gradient(135deg, rgba(234, 243, 251, 0.92), rgba(255, 241, 232, 0.72));
+      border-radius: 8px;
+      transition: border 0.16s ease, transform 0.16s ease, background 0.16s ease;
+    }
+
+    .dropzone.dragging {
+      border-color: var(--orange);
+      background: linear-gradient(135deg, rgba(234, 247, 239, 0.95), rgba(255, 241, 232, 0.95));
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border-radius: 8px;
+      background: var(--blue);
+      color: #fff;
+      font-weight: 700;
+      padding: 10px 14px;
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+
+    .btn-primary:hover { background: #245e95; transform: translateY(-1px); }
+    .btn-ghost {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--blue);
+      font-weight: 700;
+      padding: 10px 14px;
+    }
+
+    .btn-ghost:disabled {
+      cursor: not-allowed;
+      opacity: 0.48;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f6f9fc;
+      color: #475467;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+      text-align: left;
+      white-space: nowrap;
+      border-bottom: 1px solid var(--line);
+      padding: 12px;
+    }
+
+    td {
+      border-bottom: 1px solid #edf2f7;
+      padding: 12px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .positive { color: #15803d; }
+    .negative { color: #b42318; }
+    .neutral { color: #475467; }
+
+    .chart-box {
+      min-height: 320px;
+      height: 36vh;
+      max-height: 420px;
+    }
+
+    .decision-panel {
+      background:
+        radial-gradient(circle at top right, rgba(46, 117, 182, 0.16), transparent 34%),
+        linear-gradient(135deg, #ffffff 0%, #f8fbff 58%, #fffaf5 100%);
+    }
+
+    .decision-metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 14px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 154px;
+      border-radius: 999px;
+      padding: 9px 14px;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .status-good { background: #dcfce7; color: #166534; }
+    .status-positive { background: #dbeafe; color: #1d4ed8; }
+    .status-watch { background: #fef3c7; color: #92400e; }
+    .status-risk { background: #fee2e2; color: #991b1b; }
+    .status-empty { background: #f2f4f7; color: #475467; }
+
+    .explain-item {
+      border-left: 4px solid var(--blue);
+      background: #fff;
+      border-radius: 0 8px 8px 0;
+      border-top: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+
+    @media (max-width: 768px) {
+      .chart-box { height: 300px; min-height: 300px; }
+      td, th { padding: 10px; }
+    }
+
+    @media print {
+      @page { size: A4; margin: 12mm; }
+
+      body {
+        background: #fff !important;
+        color: #111827;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .shell {
+        max-width: none;
+        padding: 0 !important;
+      }
+
+      .no-print,
+      #dropzone,
+      #messageBox {
+        display: none !important;
+      }
+
+      header {
+        margin-bottom: 14px !important;
+        break-after: avoid;
+      }
+
+      .panel,
+      .kpi-card,
+      .explain-item {
+        box-shadow: none !important;
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      section {
+        break-inside: avoid-page;
+      }
+
+      .chart-box {
+        height: 240px !important;
+        min-height: 240px !important;
+        max-height: 240px !important;
+      }
+
+      .table-wrap {
+        overflow: visible !important;
+      }
+
+      .filter-panel {
+        position: static !important;
+        box-shadow: none !important;
+      }
+
+      th {
+        position: static;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main id="dashboardRoot" class="shell dashboard-shell px-4 py-5 md:px-6 md:py-7">
+    <header class="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <div>
+        <p class="text-sm font-semibold uppercase text-[#ED7D31]">File Excel giao dịch cổ phiếu</p>
+        <h1 class="mt-1 text-2xl font-extrabold text-[#172033] md:text-4xl">Dashboard hiệu quả đầu tư v7</h1>
+        <div class="mt-3 flex flex-wrap gap-2" id="dataBadges">
+          <span class="metric-chip">Chưa có dữ liệu</span>
+        </div>
+      </div>
+      <div class="no-print flex flex-wrap gap-2">
+        <button id="printPdfBtn" class="btn-ghost" type="button" title="Tải file Excel trước, sau đó in hoặc lưu dashboard thành PDF" disabled>In PDF</button>
+        <button id="sampleFormatBtn" class="btn-ghost" type="button" title="Xem cấu trúc cột Excel cần có">Cấu trúc cột</button>
+        <label for="fileInput" class="btn-primary cursor-pointer" title="Chọn file Excel từ máy tính">
+          Mở file Excel
+        </label>
+        <input id="fileInput" type="file" accept=".xlsx,.xls" class="hidden">
+      </div>
+    </header>
+
+    <section id="dropzone" class="dropzone mb-5 p-5 md:p-7">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-[#172033]">Kéo-thả file `_Data.xlsx` vào đây</h2>
+          <p class="mt-1 max-w-3xl text-sm text-[#667085]">
+            Dashboard đọc trực tiếp file Excel trong trình duyệt, tự tìm sheet giao dịch và đọc thêm sheet `Von` nếu có.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2 text-xs font-semibold text-[#475467]">
+          <span class="rounded-full bg-white px-3 py-2">FIFO lãi/lỗ</span>
+          <span class="rounded-full bg-white px-3 py-2">Format VNĐ</span>
+          <span class="rounded-full bg-white px-3 py-2">Chart.js</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="messageBox" class="mb-5 hidden rounded-lg border p-4 text-sm"></section>
+
+    <section id="positionSizeTool" class="no-print panel mb-5 p-4">
+      <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 class="text-base font-bold">Công cụ tính khối lượng vào lệnh</h2>
+          <p class="text-xs text-[#667085]">Rủi ro tính theo khoảng cách từ giá mua đến SL và làm tròn xuống theo bước lô.</p>
+        </div>
+        <span class="metric-chip">Nhập tay</span>
+      </div>
+      <div class="grid gap-3 md:grid-cols-5">
+        <label class="block">
+          <span class="mb-1 block text-xs font-bold uppercase text-[#667085]">Vốn tính lệnh</span>
+          <input id="positionCapital" class="control" type="text" inputmode="decimal" placeholder="300.000.000">
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-xs font-bold uppercase text-[#667085]">Rủi ro/lệnh (%)</span>
+          <input id="positionRiskPct" class="control" type="number" min="0" step="0.1" value="1">
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-xs font-bold uppercase text-[#667085]">Giá mua</span>
+          <input id="positionEntry" class="control" type="text" inputmode="decimal" placeholder="12.300">
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-xs font-bold uppercase text-[#667085]">SL</span>
+          <input id="positionStop" class="control" type="text" inputmode="decimal" placeholder="11.950">
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-xs font-bold uppercase text-[#667085]">Bước lô</span>
+          <input id="positionLotSize" class="control" type="number" min="1" step="1" value="100">
+        </label>
+      </div>
+      <div id="positionSizeResult" class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7"></div>
+      <p id="positionSizeNote" class="mt-2 text-xs leading-5 text-[#667085]"></p>
+    </section>
+
+    <section id="decisionPanel" class="decision-panel panel mb-5 hidden overflow-hidden p-4 md:p-5">
+      <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <p class="text-xs font-extrabold uppercase tracking-wide text-[#2E75B6]">Đánh giá nhanh</p>
+          <h2 class="mt-1 text-xl font-extrabold md:text-2xl">Khoản đầu tư có hiệu quả không?</h2>
+          <p id="decisionSubtitle" class="mt-1 text-sm text-[#667085]">Tính sau phí mua, phí bán và thuế bán.</p>
+        </div>
+        <span id="decisionStatus" class="status-pill status-empty">CHƯA CÓ DỮ LIỆU</span>
+      </div>
+
+      <div class="mb-4 overflow-hidden rounded-lg border border-[#dce6f2] bg-white">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nhóm</th>
+                <th>Chỉ số</th>
+                <th>Công thức ngắn</th>
+                <th>Ý nghĩa</th>
+                <th>Kết quả</th>
+                <th>Vùng có lợi thế</th>
+                <th>Vùng không có lợi thế</th>
+              </tr>
+            </thead>
+            <tbody id="profitabilityMetricsTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="grid gap-4 xl:grid-cols-5">
+        <div class="grid gap-3 sm:grid-cols-2 xl:col-span-3">
+          <article class="decision-metric">
+            <p class="text-xs font-bold uppercase text-[#667085]">Lãi/lỗ hiện tại</p>
+            <p id="decisionCurrentPnl" class="mt-2 text-2xl font-extrabold">—</p>
+            <p class="mt-1 text-xs text-[#667085]">Giá trị ròng nếu đóng vị thế theo giá hiện tại.</p>
+          </article>
+          <article class="decision-metric">
+            <p class="text-xs font-bold uppercase text-[#667085]">ROI hiện tại</p>
+            <p id="decisionRoi" class="mt-2 text-2xl font-extrabold">—</p>
+            <p class="mt-1 text-xs text-[#667085]">Lãi/lỗ ròng trên tổng giá vốn đã đầu tư.</p>
+          </article>
+          <article class="decision-metric border-[#fecaca] bg-[#fff7f7]">
+            <p class="text-xs font-bold uppercase text-[#991B1B]">Nếu chạm SL</p>
+            <p id="decisionSl" class="negative mt-2 text-2xl font-extrabold">—</p>
+            <p id="decisionSlCoverage" class="mt-1 text-xs text-[#667085]">Chưa có mức dừng lỗ.</p>
+          </article>
+          <article class="decision-metric border-[#bbf7d0] bg-[#f5fff8]">
+            <p class="text-xs font-bold uppercase text-[#166534]">Nếu chạm TP</p>
+            <p id="decisionTp" class="positive mt-2 text-2xl font-extrabold">—</p>
+            <p id="decisionTpCoverage" class="mt-1 text-xs text-[#667085]">Chưa có mức chốt lời.</p>
+          </article>
+          <article class="decision-metric">
+            <p class="text-xs font-bold uppercase text-[#667085]">Lợi nhuận / rủi ro</p>
+            <p id="decisionRr" class="mt-2 text-2xl font-extrabold">—</p>
+            <p class="mt-1 text-xs text-[#667085]">Từ 2,0x trở lên thường là mức hấp dẫn.</p>
+          </article>
+        </div>
+
+        <div class="rounded-lg border border-[#dce6f2] bg-white p-3 xl:col-span-2">
+          <h3 class="text-sm font-extrabold">Ba kịch bản lãi/lỗ</h3>
+          <p class="mt-1 text-xs text-[#667085]">So sánh SL, giá hiện tại và TP sau chi phí.</p>
+          <div class="mt-2 h-[250px]"><canvas id="scenarioChart"></canvas></div>
+          <div id="decisionReasons" class="mt-2 space-y-1 text-xs leading-5 text-[#667085]"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <section id="dashboardFilters" class="no-print panel filter-panel mb-5 p-4">
+      <div class="grid gap-3 md:grid-cols-6">
+        <label class="block">
+          <span class="mb-1 block text-xs font-bold uppercase text-[#667085]">Mã cổ phiếu</span>
+          <select id="tickerFilter" class="control">
+            <option value="all">Tất cả</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-xs font-bold uppercase text-[#667085]">Loại lệnh</span>
+          <select id="sideFilter" class="control">
+            <option value="all">Tất cả</option>
+            <option value="buy">Mua</option>
+            <option value="sell">Bán</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-xs font-bold uppercase text-[#667085]">Trạng thái</span>
+          <select id="statusFilter" class="control">
+            <option value="all">Tất cả</option>
+            <option value="open">Đang mở</option>
+            <option value="closed">Đã đóng</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-xs font-bold uppercase text-[#667085]">Từ ngày</span>
+          <input id="fromDate" class="control" type="date">
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-xs font-bold uppercase text-[#667085]">Đến ngày</span>
+          <input id="toDate" class="control" type="date">
+        </label>
+        <div class="flex items-end gap-2">
+          <button id="resetFilters" class="btn-ghost w-full" type="button">Đặt lại</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="kpiSection" class="dashboard-report mb-5">
+      <div class="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <h2 class="text-base font-bold">Thẻ số liệu</h2>
+        </div>
+        <span id="kpiCount" class="metric-chip">0 thẻ</span>
+      </div>
+      <div id="kpiGrid" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"></div>
+    </section>
+
+    <section id="capitalPanel" class="panel mb-5 hidden p-4"></section>
+
+    <section id="chartSection" class="dashboard-report mb-5 grid gap-4 xl:grid-cols-2">
+      <div class="panel p-4">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-bold">Lãi/lỗ sau phí thuế theo mã</h2>
+            <p class="text-xs text-[#667085]">Tính theo phương pháp FIFO sau phí mua, phí bán và thuế bán.</p>
+          </div>
+        </div>
+        <div class="chart-box"><canvas id="pnlByTickerChart"></canvas></div>
+      </div>
+      <div class="panel p-4">
+        <div class="mb-3">
+          <h2 class="text-base font-bold">Cơ cấu giá trị giao dịch</h2>
+          <p class="text-xs text-[#667085]">Tổng giá trị mua và bán theo từng mã cổ phiếu.</p>
+        </div>
+        <div class="chart-box"><canvas id="turnoverChart"></canvas></div>
+      </div>
+      <div class="panel p-4">
+        <div class="mb-3">
+          <h2 class="text-base font-bold">Dòng tiền mua / bán theo ngày</h2>
+          <p class="text-xs text-[#667085]">Theo ngày giao dịch trong file Excel.</p>
+        </div>
+        <div class="chart-box"><canvas id="cashflowChart"></canvas></div>
+      </div>
+      <div class="panel p-4">
+        <div class="mb-3">
+          <h2 class="text-base font-bold">Lãi/lỗ lũy kế</h2>
+          <p class="text-xs text-[#667085]">Chỉ ghi nhận khi có lệnh bán khớp với lượng mua trước đó.</p>
+        </div>
+        <div class="chart-box"><canvas id="cumPnlChart"></canvas></div>
+      </div>
+    </section>
+
+    <section id="summaryPositionSection" class="dashboard-report mb-5 grid gap-4 xl:grid-cols-3">
+      <div class="panel p-4 xl:col-span-2">
+        <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 class="text-base font-bold">Hiệu quả theo mã</h2>
+            <p class="text-xs text-[#667085]">So sánh giá trị mua, bán, lãi/lỗ, ROI và tỷ lệ thắng.</p>
+          </div>
+          <span id="summaryCount" class="metric-chip">0 mã</span>
+        </div>
+        <div class="table-wrap max-h-[460px]">
+          <table>
+            <thead>
+              <tr>
+                <th>Mã</th>
+                <th>Giá trị mua</th>
+                <th>Giá trị bán</th>
+                <th>Phí + thuế</th>
+                <th>Lãi/lỗ sau phí thuế</th>
+                <th>ROI sau phí thuế</th>
+                <th>Tỷ lệ thắng</th>
+                <th>Vị thế còn lại</th>
+              </tr>
+            </thead>
+            <tbody id="summaryTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel p-4">
+        <div class="mb-3">
+          <h2 class="text-base font-bold">Vị thế đang nắm giữ</h2>
+          <p class="text-xs text-[#667085]">Tạm tính theo cột Gia_hien_tai; nếu thiếu thì dùng giá giao dịch gần nhất trong file.</p>
+        </div>
+        <div id="positionList" class="space-y-3"></div>
+      </div>
+    </section>
+
+    <section id="transactionLogSection" class="dashboard-report panel mb-5 p-4">
+      <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 class="text-base font-bold">Nhật ký giao dịch v7 - 1 dòng/lệnh</h2>
+          <p class="text-xs text-[#667085]">Lệnh đã đóng hiển thị R thực tế theo lời/lỗ; lệnh đang mở hiển thị R:R kế hoạch theo SL/TP.</p>
+        </div>
+        <span id="transactionCount" class="metric-chip">0 dòng</span>
+      </div>
+      <div class="table-wrap max-h-[520px]">
+        <table>
+          <thead>
+            <tr>
+              <th>Ngày mua</th>
+              <th>Ngày bán</th>
+              <th>Mã</th>
+              <th>Trạng thái</th>
+              <th>Số lượng</th>
+              <th>Ngày giữ</th>
+              <th>Giá vốn</th>
+              <th>Tỷ lệ/Vốn</th>
+              <th>SL</th>
+              <th>Giá bán</th>
+              <th>Lợi nhuận</th>
+              <th>% lợi nhuận</th>
+              <th>Tỷ lệ R:R</th>
+            </tr>
+          </thead>
+          <tbody id="transactionTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="explainSection" class="dashboard-report panel p-4">
+      <div class="mb-4">
+        <h2 class="text-base font-bold">Ý nghĩa đánh giá hiệu quả đầu tư</h2>
+        <p class="text-xs text-[#667085]">Các chỉ số dùng để Giám đốc vận hành nhìn nhanh chất lượng giao dịch và rủi ro vận hành.</p>
+      </div>
+      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3" id="explainGrid"></div>
+    </section>
+  </main>
+
+  <script>
+    // ===== SECTION: STATE =====
+    const state = {
+      rawRows: [],
+      transactions: [],
+      filtered: [],
+      charts: {},
+      dateBounds: { min: null, max: null },
+      warnings: [],
+      capital: null,
+      sourceName: ""
+    };
+
+    const REQUIRED_FIELDS = {
+      ticker: ["ma_cp", "macp", "ma", "symbol", "ticker", "ma co phieu"],
+      side: ["loai_lenh", "loailenh", "lenh", "side", "type", "mua ban"],
+      date: ["ngay", "date", "ngay giao dich", "trading date", "ngay_mua", "ngay mua", "buy_date", "buy date"],
+      qty: ["so_luong", "soluong", "qty", "quantity", "khoi luong", "so luong"],
+      price: ["gia", "price", "gia khop", "gia giao dich", "gia_mua", "gia mua", "buy_price", "buy price"]
+    };
+
+    const OPTIONAL_FIELDS = {
+      buyDate: ["ngay_mua", "ngay mua", "buy_date", "buy date"],
+      buyPrice: ["gia_mua", "gia mua", "buy_price", "buy price"],
+      sellDate: ["ngay_ban", "ngay ban", "sell_date", "sell date"],
+      sellPrice: ["gia_ban", "gia ban", "sell_price", "sell price"],
+      status: ["trang_thai", "trangthai", "trang thai", "status", "trade_status", "trade status"],
+      buyFee: ["phi_mua", "phimua", "buy_fee", "fee_buy", "phi mua"],
+      sellFee: ["phi_ban", "phiban", "sell_fee", "fee_sell", "phi ban"],
+      sellTax: ["thue_ban", "thueban", "sell_tax", "tax_sell", "thue ban"],
+      currentPrice: ["gia_hien_tai", "giahientai", "current_price", "market_price", "gia thi truong", "gia hien tai"],
+      stopLoss: ["sl", "stop_loss", "stoploss", "gia_sl", "gia dung lo", "dung lo"],
+      takeProfit: ["tp", "take_profit", "takeprofit", "gia_tp", "gia chot loi", "chot loi"]
+    };
+
+    const COLORS = {
+      blue: "#2E75B6",
+      orange: "#ED7D31",
+      green: "#2CA58D",
+      red: "#D64545",
+      yellow: "#F3B23C",
+      violet: "#7C6AD8",
+      gray: "#667085",
+      paleBlue: "rgba(46, 117, 182, 0.16)",
+      paleOrange: "rgba(237, 125, 49, 0.18)"
+    };
+
+    // ===== SECTION: DOM =====
+    const els = {
+      root: document.getElementById("dashboardRoot"),
+      fileInput: document.getElementById("fileInput"),
+      dropzone: document.getElementById("dropzone"),
+      messageBox: document.getElementById("messageBox"),
+      tickerFilter: document.getElementById("tickerFilter"),
+      sideFilter: document.getElementById("sideFilter"),
+      statusFilter: document.getElementById("statusFilter"),
+      fromDate: document.getElementById("fromDate"),
+      toDate: document.getElementById("toDate"),
+      resetFilters: document.getElementById("resetFilters"),
+      sampleFormatBtn: document.getElementById("sampleFormatBtn"),
+      printPdfBtn: document.getElementById("printPdfBtn"),
+      positionCapital: document.getElementById("positionCapital"),
+      positionRiskPct: document.getElementById("positionRiskPct"),
+      positionEntry: document.getElementById("positionEntry"),
+      positionStop: document.getElementById("positionStop"),
+      positionLotSize: document.getElementById("positionLotSize"),
+      positionSizeResult: document.getElementById("positionSizeResult"),
+      positionSizeNote: document.getElementById("positionSizeNote"),
+      decisionPanel: document.getElementById("decisionPanel"),
+      decisionStatus: document.getElementById("decisionStatus"),
+      decisionSubtitle: document.getElementById("decisionSubtitle"),
+      decisionCurrentPnl: document.getElementById("decisionCurrentPnl"),
+      decisionRoi: document.getElementById("decisionRoi"),
+      decisionSl: document.getElementById("decisionSl"),
+      decisionTp: document.getElementById("decisionTp"),
+      decisionRr: document.getElementById("decisionRr"),
+      decisionSlCoverage: document.getElementById("decisionSlCoverage"),
+      decisionTpCoverage: document.getElementById("decisionTpCoverage"),
+      decisionReasons: document.getElementById("decisionReasons"),
+      profitabilityMetricsTable: document.getElementById("profitabilityMetricsTable"),
+      kpiGrid: document.getElementById("kpiGrid"),
+      kpiCount: document.getElementById("kpiCount"),
+      dataBadges: document.getElementById("dataBadges"),
+      summaryTable: document.getElementById("summaryTable"),
+      summaryCount: document.getElementById("summaryCount"),
+      transactionTable: document.getElementById("transactionTable"),
+      transactionCount: document.getElementById("transactionCount"),
+      positionList: document.getElementById("positionList"),
+      capitalPanel: document.getElementById("capitalPanel"),
+      explainGrid: document.getElementById("explainGrid")
+    };
+
+    // ===== SECTION: FORMATTERS =====
+    const moneyFormatter = new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+      maximumFractionDigits: 0
+    });
+
+    const numberFormatter = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 });
+    const pctFormatter = new Intl.NumberFormat("vi-VN", {
+      style: "percent",
+      maximumFractionDigits: 2
+    });
+
+    function formatMoney(value) {
+      return moneyFormatter.format(Number.isFinite(value) ? value : 0).replace("₫", "₫");
+    }
+
+    function formatNumber(value) {
+      return numberFormatter.format(Number.isFinite(value) ? value : 0);
+    }
+
+    function formatPct(value) {
+      if (!Number.isFinite(value)) return "N/A";
+      return pctFormatter.format(value);
+    }
+
+    function toISODate(date) {
+      if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "";
+      const tzSafe = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+      return tzSafe.toISOString().slice(0, 10);
+    }
+
+    function displayDate(date) {
+      if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "N/A";
+      return date.toLocaleDateString("vi-VN");
+    }
+
+    function getSystemYearDateRange(baseDate = new Date()) {
+      const year = baseDate.getFullYear();
+      return {
+        min: toISODate(new Date(year, 0, 1)),
+        max: toISODate(new Date(year, 11, 31))
+      };
+    }
+
+    function normalizeHeader(value) {
+      return String(value || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "");
+    }
+
+    function cssClassForValue(value) {
+      if (value > 0) return "positive";
+      if (value < 0) return "negative";
+      return "neutral";
+    }
+
+    function renderPositionSizeTool() {
+      const capital = parseNumeric(els.positionCapital.value);
+      const riskPctInput = parseNumeric(els.positionRiskPct.value);
+      const entryPrice = parseNumeric(els.positionEntry.value);
+      const stopLoss = parseNumeric(els.positionStop.value);
+      const lotSizeInput = parseNumeric(els.positionLotSize.value);
+      const lotSize = Number.isFinite(lotSizeInput) && lotSizeInput > 0 ? Math.floor(lotSizeInput) : 1;
+      const riskPct = Number.isFinite(riskPctInput) ? riskPctInput / 100 : NaN;
+      const riskBudget = Number.isFinite(capital) && Number.isFinite(riskPct) ? capital * riskPct : NaN;
+      const riskPerShare = Number.isFinite(entryPrice) && Number.isFinite(stopLoss) ? Math.abs(entryPrice - stopLoss) : NaN;
+      const rawQty = riskPerShare > 0 && Number.isFinite(riskBudget) ? riskBudget / riskPerShare : NaN;
+      const suggestedQty = Number.isFinite(rawQty) ? Math.floor(rawQty / lotSize) * lotSize : NaN;
+      const buyValue = Number.isFinite(suggestedQty) && Number.isFinite(entryPrice) ? suggestedQty * entryPrice : NaN;
+      const stopRisk = Number.isFinite(suggestedQty) && Number.isFinite(riskPerShare) ? suggestedQty * riskPerShare : NaN;
+      const capitalUsage = Number.isFinite(buyValue) && Number.isFinite(capital) && capital > 0 ? buyValue / capital : NaN;
+      const cashLeft = Number.isFinite(capital) && Number.isFinite(buyValue) ? capital - buyValue : NaN;
+      const stopRiskPct = Number.isFinite(stopRisk) && Number.isFinite(buyValue) && buyValue > 0 ? stopRisk / buyValue : NaN;
+      const stopLossPct = Number.isFinite(stopLoss) && Number.isFinite(entryPrice) && entryPrice > 0 ? (stopLoss - entryPrice) / entryPrice : NaN;
+
+      const cards = [
+        ["Khối lượng đề xuất", Number.isFinite(suggestedQty) ? `${formatNumber(suggestedQty)} cp` : "—", "Làm tròn xuống theo bước lô.", "positive"],
+        ["Giá trị mua", Number.isFinite(buyValue) ? formatMoney(buyValue) : "—", "Khối lượng nhân giá mua.", "neutral"],
+        ["Rủi ro tại SL", Number.isFinite(stopRisk) ? formatMoney(stopRisk) : "—", "Khối lượng nhân khoảng cách tới SL.", Number.isFinite(stopRisk) ? "negative" : "neutral"],
+        ["% Rủi ro tại SL", Number.isFinite(stopRiskPct) ? formatPct(stopRiskPct) : "—", "Rủi ro tại SL chia cho giá trị mua.", Number.isFinite(stopRiskPct) ? "negative" : "neutral"],
+        ["% SL", Number.isFinite(stopLossPct) ? formatPct(stopLossPct) : "—", "SL chia cho giá mua rồi trừ 1.", Number.isFinite(stopLossPct) ? cssClassForValue(stopLossPct) : "neutral"],
+        ["Tỷ lệ/Vốn", Number.isFinite(capitalUsage) ? formatPct(capitalUsage) : "—", "Giá trị mua chia cho vốn tính lệnh.", Number.isFinite(capitalUsage) && capitalUsage > 1 ? "negative" : "neutral"],
+        ["Tiền còn lại", Number.isFinite(cashLeft) ? formatMoney(cashLeft) : "—", "Vốn tính lệnh trừ giá trị mua.", Number.isFinite(cashLeft) ? cssClassForValue(cashLeft) : "neutral"]
+      ];
+
+      els.positionSizeResult.innerHTML = cards.map(([label, value, hint, valueClass]) => `
+        <article class="rounded-lg border border-[#dce6f2] bg-white p-3" title="${hint}">
+          <p class="text-xs font-bold uppercase text-[#667085]">${label}</p>
+          <p class="mt-2 break-words text-lg font-extrabold ${valueClass}">${value}</p>
+          <p class="mt-1 text-xs leading-5 text-[#667085]">${hint}</p>
+        </article>
+      `).join("");
+
+      if (!Number.isFinite(capital) || capital <= 0 || !Number.isFinite(riskPct) || riskPct <= 0 || !Number.isFinite(entryPrice) || entryPrice <= 0 || !Number.isFinite(stopLoss) || stopLoss <= 0) {
+        els.positionSizeNote.textContent = "Cần nhập vốn, rủi ro/lệnh, giá mua và SL lớn hơn 0.";
+      } else if (!Number.isFinite(riskPerShare) || riskPerShare <= 0) {
+        els.positionSizeNote.textContent = "Giá mua và SL cần khác nhau để tính rủi ro mỗi cổ phiếu.";
+      } else if (Number.isFinite(suggestedQty) && suggestedQty < lotSize) {
+        els.positionSizeNote.textContent = `Rủi ro cho phép chưa đủ để mua một lô ${formatNumber(lotSize)} cổ phiếu.`;
+      } else {
+        els.positionSizeNote.textContent = `Ngân sách rủi ro: ${formatMoney(riskBudget)}. Khoảng cách tới SL: ${formatMoney(riskPerShare)} / cp, tương đương ${formatPct(stopRiskPct)} giá trị mua.`;
+      }
+    }
+
+    // ===== SECTION: FILE READING =====
+    function bindEvents() {
+      els.fileInput.addEventListener("change", (event) => {
+        const file = event.target.files?.[0];
+        if (file) readExcelFile(file);
+      });
+
+      ["dragenter", "dragover"].forEach((name) => {
+        els.dropzone.addEventListener(name, (event) => {
+          event.preventDefault();
+          els.dropzone.classList.add("dragging");
+        });
+      });
+
+      ["dragleave", "drop"].forEach((name) => {
+        els.dropzone.addEventListener(name, (event) => {
+          event.preventDefault();
+          els.dropzone.classList.remove("dragging");
+        });
+      });
+
+      els.dropzone.addEventListener("drop", (event) => {
+        const file = event.dataTransfer.files?.[0];
+        if (file) readExcelFile(file);
+      });
+
+      [els.tickerFilter, els.sideFilter, els.statusFilter, els.fromDate, els.toDate].forEach((el) => {
+        el.addEventListener("change", applyFilters);
+      });
+
+      [els.positionCapital, els.positionRiskPct, els.positionEntry, els.positionStop, els.positionLotSize].forEach((el) => {
+        el.addEventListener("input", renderPositionSizeTool);
+      });
+
+      els.resetFilters.addEventListener("click", resetFilters);
+      els.sampleFormatBtn.addEventListener("click", showExpectedFormat);
+      els.printPdfBtn.addEventListener("click", printDashboardPdf);
+      updatePrintPdfButton();
+      renderPositionSizeTool();
+    }
+
+    function printDashboardPdf() {
+      if (!state.transactions.length) {
+        showMessage("Hãy tải file Excel trước khi tạo bản in PDF.", "warning");
+        return;
+      }
+
+      hideMessage();
+      window.requestAnimationFrame(() => window.print());
+    }
+
+    function updatePrintPdfButton() {
+      const hasData = state.transactions.length > 0;
+      els.printPdfBtn.disabled = !hasData;
+      els.printPdfBtn.title = hasData
+        ? "Mở hộp thoại in để lưu dashboard thành PDF"
+        : "Tải file Excel trước, sau đó in hoặc lưu dashboard thành PDF";
+    }
+
+    async function readExcelFile(file) {
+      try {
+        hideMessage();
+        if (!/\.(xlsx|xls)$/i.test(file.name)) {
+          throw new Error("Vui lòng chọn file Excel định dạng .xlsx hoặc .xls.");
+        }
+
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: "array", cellDates: false });
+        const transactionSheet = findTransactionSheet(workbook);
+        if (!transactionSheet) {
+          throw new Error("Không tìm thấy sheet giao dịch. Sheet cần có các cột Ma_cp, Loai_lenh, Ngay_Mua, So_luong, Gia_mua. Nếu có Ngay_ban thì dashboard xem là Đã đóng.");
+        }
+
+        const rows = XLSX.utils.sheet_to_json(transactionSheet.sheet, { defval: "", raw: true });
+        if (!rows.length) throw new Error(`Sheet "${transactionSheet.name}" không có dòng dữ liệu.`);
+
+        state.rawRows = rows;
+        state.capital = extractCapital(workbook);
+        if (state.capital && !els.positionCapital.value.trim()) {
+          els.positionCapital.value = formatNumber(state.capital.amount);
+          renderPositionSizeTool();
+        }
+        state.sourceName = file.name;
+        const { transactions, warnings } = normalizeRows(rows);
+        state.transactions = transactions;
+        state.warnings = warnings;
+
+        if (!transactions.length) {
+          throw new Error("Không tìm thấy giao dịch hợp lệ sau khi chuẩn hóa dữ liệu.");
+        }
+
+        setupFilters(transactions);
+        applyFilters();
+        updatePrintPdfButton();
+        const capitalText = state.capital ? ` Vốn ban đầu: ${formatMoney(state.capital.amount)} từ sheet "${state.capital.sheetName}".` : " Chưa tìm thấy sheet vốn.";
+        showMessage(`Đã đọc ${formatNumber(transactions.length)} dòng hợp lệ từ sheet "${transactionSheet.name}".${capitalText}`, "success");
+      } catch (error) {
+        state.transactions = [];
+        state.filtered = [];
+        state.capital = null;
+        renderEmpty();
+        showMessage(error.message || "Không thể đọc file Excel. Vui lòng kiểm tra lại cấu trúc dữ liệu.", "error");
+      }
+    }
+
+    // ===== SECTION: DATA CLEANING =====
+    function findTransactionSheet(workbook) {
+      for (const name of workbook.SheetNames) {
+        const sheet = workbook.Sheets[name];
+        const rows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: true });
+        if (!rows.length) continue;
+        const headers = Object.keys(rows[0] || {});
+        const fieldMap = buildFieldMap(headers);
+        const missing = Object.keys(REQUIRED_FIELDS).filter((field) => !fieldMap[field]);
+        if (!missing.length) return { name, sheet };
+      }
+      return null;
+    }
+
+    function extractCapital(workbook) {
+      for (const name of workbook.SheetNames) {
+        const normalizedName = normalizeHeader(name);
+        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: "", raw: true });
+        const cells = rows.flat();
+        const hasCapitalSignal = normalizedName.includes("von") || cells.some((cell) => normalizeHeader(cell).includes("von"));
+        if (!hasCapitalSignal) continue;
+
+        for (const cell of cells) {
+          const parsed = parseNumeric(cell);
+          if (Number.isFinite(parsed) && parsed > 0) {
+            return { amount: parsed, sheetName: name };
+          }
+        }
+      }
+      return null;
+    }
+
+    function buildFieldMap(headers) {
+      const normalizedMap = headers.map((header) => ({
+        raw: header,
+        normalized: normalizeHeader(header)
+      }));
+      const fieldMap = {};
+
+      Object.entries(REQUIRED_FIELDS).forEach(([field, aliases]) => {
+        const match = findHeaderMatch(normalizedMap, aliases);
+        if (match) fieldMap[field] = match.raw;
+      });
+
+      Object.entries(OPTIONAL_FIELDS).forEach(([field, aliases]) => {
+        const match = findHeaderMatch(normalizedMap, aliases);
+        if (match) fieldMap[field] = match.raw;
+      });
+
+      return fieldMap;
+    }
+
+    function findHeaderMatch(normalizedMap, aliases) {
+      const normalizedAliases = aliases.map(normalizeHeader);
+      return normalizedMap.find(({ normalized }) => normalizedAliases.includes(normalized))
+        || normalizedMap.find(({ normalized }) => (
+          normalizedAliases.some((alias) => normalized.startsWith(`${alias}_`))
+        ));
+    }
+
+    function normalizeRows(rows) {
+      const headers = Object.keys(rows[0] || {});
+      const fieldMap = buildFieldMap(headers);
+
+      const missing = Object.keys(REQUIRED_FIELDS).filter((field) => !fieldMap[field]);
+      if (missing.length) {
+        throw new Error(`File Excel thiếu cột bắt buộc: ${missing.join(", ")}. Cần có Ma_cp, Loai_lenh, ngay, So_luong, Gia.`);
+      }
+
+      const warnings = [];
+      const transactions = rows.map((row, index) => {
+        const isBlankRow = Object.values(fieldMap).every((fieldName) => {
+          const value = row[fieldName];
+          return value === "" || value === null || value === undefined;
+        });
+        if (isBlankRow) return null;
+
+        const ticker = String(row[fieldMap.ticker] || "").trim().toUpperCase();
+        const sideRaw = String(row[fieldMap.side] || "").trim();
+        const side = parseSide(sideRaw);
+        const date = parseExcelDate(row[fieldMap.date]);
+        const qty = parseNumeric(row[fieldMap.qty]);
+        const price = parseNumeric(row[fieldMap.price]);
+        const currentPriceRaw = fieldMap.currentPrice ? row[fieldMap.currentPrice] : "";
+        const hasCurrentPrice = currentPriceRaw !== "" && currentPriceRaw !== null && currentPriceRaw !== undefined;
+        const parsedCurrentPrice = hasCurrentPrice ? parseNumeric(currentPriceRaw) : NaN;
+        const currentPrice = Number.isFinite(parsedCurrentPrice) && parsedCurrentPrice > 0 ? parsedCurrentPrice : null;
+        const stopLossRaw = fieldMap.stopLoss ? row[fieldMap.stopLoss] : "";
+        const takeProfitRaw = fieldMap.takeProfit ? row[fieldMap.takeProfit] : "";
+        const parsedStopLoss = parseNumeric(stopLossRaw);
+        const parsedTakeProfit = parseNumeric(takeProfitRaw);
+        const stopLoss = Number.isFinite(parsedStopLoss) && parsedStopLoss > 0 ? parsedStopLoss : null;
+        const takeProfit = Number.isFinite(parsedTakeProfit) && parsedTakeProfit > 0 ? parsedTakeProfit : null;
+        const grossValue = qty * price;
+        const buyFee = parseOptionalCharge(row, fieldMap.buyFee, side === "buy" ? grossValue * 0.001 : 0);
+        const sellFee = parseOptionalCharge(row, fieldMap.sellFee, side === "sell" ? grossValue * 0.001 : 0);
+        const sellTax = parseOptionalCharge(row, fieldMap.sellTax, side === "sell" ? grossValue * 0.001 : 0);
+        const id = row.ID || row.Id || row.id || index + 1;
+
+        const invalidReasons = [];
+        if (!ticker) invalidReasons.push("thiếu mã");
+        if (!side) invalidReasons.push("loại lệnh phải là Mua/Bán");
+        if (!date) invalidReasons.push("ngày không hợp lệ");
+        if (!Number.isFinite(qty) || qty <= 0) invalidReasons.push("số lượng phải > 0");
+        if (!Number.isFinite(price) || price <= 0) invalidReasons.push("giá phải > 0");
+        if (![buyFee, sellFee, sellTax].every((value) => Number.isFinite(value) && value >= 0)) invalidReasons.push("phí/thuế phải >= 0");
+        if (hasCurrentPrice && currentPrice === null) {
+          warnings.push(`Dòng ${index + 2}: Gia_hien_tai không hợp lệ, dashboard sẽ dùng giá giao dịch gần nhất nếu cần.`);
+        }
+
+        if (invalidReasons.length) {
+          warnings.push(`Dòng ${index + 2}: ${invalidReasons.join(", ")}.`);
+          return null;
+        }
+
+        return {
+          id,
+          rowIndex: index + 2,
+          ticker,
+          side,
+          sideLabel: side === "buy" ? "Mua" : "Bán",
+          date,
+          isoDate: toISODate(date),
+          qty,
+          price,
+          currentPrice,
+          stopLoss,
+          takeProfit,
+          value: grossValue,
+          buyFee,
+          sellFee,
+          sellTax,
+          charges: buyFee + sellFee + sellTax,
+          netValue: side === "buy" ? grossValue + buyFee : grossValue - sellFee - sellTax
+        };
+      }).filter(Boolean);
+
+      transactions.sort((a, b) => {
+        const byDate = a.date - b.date;
+        if (byDate !== 0) return byDate;
+        return Number(a.id) - Number(b.id);
+      });
+
+      return { transactions, warnings };
+    }
+
+    function normalizeRows(rows) {
+      const headers = Object.keys(rows[0] || {});
+      const fieldMap = buildFieldMap(headers);
+
+      const missing = Object.keys(REQUIRED_FIELDS).filter((field) => !fieldMap[field]);
+      if (missing.length) {
+        throw new Error(`File Excel thiếu cột bắt buộc: ${missing.join(", ")}. Cần có Ma_cp, Loai_lenh, Ngay_Mua, So_luong, Gia_mua.`);
+      }
+
+      const warnings = [];
+      const transactions = [];
+      rows.forEach((row, index) => {
+        const requiredFieldNames = [fieldMap.ticker, fieldMap.buyDate || fieldMap.date, fieldMap.qty, fieldMap.buyPrice || fieldMap.price];
+        const isBlankRow = requiredFieldNames.every((fieldName) => {
+          const value = row[fieldName];
+          return value === "" || value === null || value === undefined || String(value).trim() === "";
+        });
+        if (isBlankRow) return;
+
+        const id = row.ID || row.Id || row.id || index + 1;
+        const rowIndex = index + 2;
+        const lotId = String(id || index + 1);
+        const ticker = String(row[fieldMap.ticker] || "").trim().toUpperCase();
+        const sideRaw = String(row[fieldMap.side] || "").trim();
+        const side = parseSide(sideRaw) || "buy";
+        const buyDate = parseExcelDate(row[fieldMap.buyDate || fieldMap.date]);
+        const buyPrice = parseNumeric(row[fieldMap.buyPrice || fieldMap.price]);
+        const sellDateRaw = fieldMap.sellDate ? row[fieldMap.sellDate] : "";
+        const sellPriceRaw = fieldMap.sellPrice ? row[fieldMap.sellPrice] : "";
+        const sellDate = parseExcelDate(sellDateRaw);
+        const sellPrice = parseNumeric(sellPriceRaw);
+        const hasSellDate = sellDateRaw !== "" && sellDateRaw !== null && sellDateRaw !== undefined && String(sellDateRaw).trim() !== "";
+        const hasSellPrice = sellPriceRaw !== "" && sellPriceRaw !== null && sellPriceRaw !== undefined && String(sellPriceRaw).trim() !== "";
+        const qty = parseNumeric(row[fieldMap.qty]);
+        const status = hasSellDate ? "closed" : "open";
+        const statusLabel = status === "closed" ? "Đã đóng" : "Đang mở";
+
+        const currentPriceRaw = fieldMap.currentPrice ? row[fieldMap.currentPrice] : "";
+        const hasCurrentPrice = currentPriceRaw !== "" && currentPriceRaw !== null && currentPriceRaw !== undefined;
+        const parsedCurrentPrice = hasCurrentPrice ? parseNumeric(currentPriceRaw) : NaN;
+        const currentPrice = Number.isFinite(parsedCurrentPrice) && parsedCurrentPrice > 0 ? parsedCurrentPrice : null;
+        const parsedStopLoss = parseNumeric(fieldMap.stopLoss ? row[fieldMap.stopLoss] : "");
+        const parsedTakeProfit = parseNumeric(fieldMap.takeProfit ? row[fieldMap.takeProfit] : "");
+        const stopLoss = Number.isFinite(parsedStopLoss) && parsedStopLoss > 0 ? parsedStopLoss : null;
+        const takeProfit = Number.isFinite(parsedTakeProfit) && parsedTakeProfit > 0 ? parsedTakeProfit : null;
+        const buyGrossValue = qty * buyPrice;
+        const buyFee = parseOptionalCharge(row, fieldMap.buyFee, buyGrossValue * 0.001);
+
+        const invalidReasons = [];
+        if (!ticker) invalidReasons.push("thiếu mã");
+        if (!buyDate) invalidReasons.push("ngày mua không hợp lệ");
+        if (!Number.isFinite(qty) || qty <= 0) invalidReasons.push("số lượng phải > 0");
+        if (!Number.isFinite(buyPrice) || buyPrice <= 0) invalidReasons.push("giá mua phải > 0");
+        if (!Number.isFinite(buyFee) || buyFee < 0) invalidReasons.push("phí mua phải >= 0");
+        if (hasCurrentPrice && currentPrice === null) {
+          warnings.push(`Dòng ${rowIndex}: Gia_hien_tai không hợp lệ, dashboard sẽ dùng giá giao dịch gần nhất nếu cần.`);
+        }
+        if (hasSellDate && !sellDate) invalidReasons.push("ngày bán không hợp lệ");
+        if (hasSellDate && (!Number.isFinite(sellPrice) || sellPrice <= 0)) invalidReasons.push("giá bán phải > 0 khi có ngày bán");
+        if (!hasSellDate && hasSellPrice) warnings.push(`Dòng ${rowIndex}: Có giá bán nhưng chưa có ngày bán, dashboard vẫn xem là Đang mở.`);
+
+        const sellGrossValue = Number.isFinite(sellPrice) ? qty * sellPrice : 0;
+        const sellFee = hasSellDate ? parseOptionalCharge(row, fieldMap.sellFee, sellGrossValue * 0.001) : 0;
+        const sellTax = hasSellDate ? parseOptionalCharge(row, fieldMap.sellTax, sellGrossValue * 0.001) : 0;
+        if (![sellFee, sellTax].every((value) => Number.isFinite(value) && value >= 0)) invalidReasons.push("phí/thuế bán phải >= 0");
+
+        if (invalidReasons.length) {
+          warnings.push(`Dòng ${rowIndex}: ${invalidReasons.join(", ")}.`);
+          return;
+        }
+
+        transactions.push({
+          id,
+          sortSide: 0,
+          rowIndex,
+          lotId,
+          status,
+          statusLabel,
+          ticker,
+          side: "buy",
+          sideLabel: side === "sell" ? "Bán" : "Mua",
+          date: buyDate,
+          isoDate: toISODate(buyDate),
+          qty,
+          price: buyPrice,
+          currentPrice,
+          stopLoss,
+          takeProfit,
+          value: buyGrossValue,
+          buyFee,
+          sellFee: 0,
+          sellTax: 0,
+          charges: buyFee,
+          netValue: buyGrossValue + buyFee
+        });
+
+        if (hasSellDate) {
+          transactions.push({
+            id,
+            sortSide: 1,
+            rowIndex,
+            lotId,
+            status,
+            statusLabel,
+            ticker,
+            side: "sell",
+            sideLabel: "Bán",
+            date: sellDate,
+            isoDate: toISODate(sellDate),
+            qty,
+            price: sellPrice,
+            currentPrice,
+            stopLoss,
+            takeProfit,
+            value: sellGrossValue,
+            buyFee: 0,
+            sellFee,
+            sellTax,
+            charges: sellFee + sellTax,
+            netValue: sellGrossValue - sellFee - sellTax
+          });
+        }
+      });
+
+      transactions.sort((a, b) => {
+        const byDate = a.date - b.date;
+        if (byDate !== 0) return byDate;
+        const byId = Number(a.id) - Number(b.id);
+        if (Number.isFinite(byId) && byId !== 0) return byId;
+        return (a.sortSide || 0) - (b.sortSide || 0);
+      });
+
+      return { transactions, warnings };
+    }
+
+    function parseSide(value) {
+      const normalized = normalizeHeader(value);
+      if (["mua", "buy", "b"].includes(normalized)) return "buy";
+      if (["ban", "sell", "s"].includes(normalized)) return "sell";
+      return null;
+    }
+
+    function parseNumeric(value) {
+      if (typeof value === "number") return value;
+      const cleaned = String(value || "")
+        .replace(/\s/g, "")
+        .replace(/[₫,]/g, "")
+        .replace(/\.(?=\d{3}(\D|$))/g, "");
+      const parsed = Number(cleaned);
+      return Number.isFinite(parsed) ? parsed : NaN;
+    }
+
+    function parseOptionalCharge(row, fieldName, fallback) {
+      if (!fieldName) return fallback;
+      const raw = row[fieldName];
+      if (raw === "" || raw === null || raw === undefined) return fallback;
+      const parsed = parseNumeric(raw);
+      return Number.isFinite(parsed) ? parsed : fallback;
+    }
+
+    function parseExcelDate(value) {
+      if (value instanceof Date) return value;
+      if (typeof value === "number") {
+        const parsed = XLSX.SSF.parse_date_code(value);
+        if (!parsed) return null;
+        return new Date(parsed.y, parsed.m - 1, parsed.d);
+      }
+      const text = String(value || "").trim();
+      if (!text) return null;
+
+      const direct = new Date(text);
+      if (!Number.isNaN(direct.getTime())) return direct;
+
+      const match = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+      if (match) {
+        const [, d, m, y] = match;
+        return new Date(Number(y), Number(m) - 1, Number(d));
+      }
+      return null;
+    }
+
+    // ===== SECTION: ANALYTICS =====
+    function analyze(transactions) {
+      const lotsByTicker = new Map();
+      const statsByTicker = new Map();
+      const realizedTrades = [];
+      const unmatchedSells = [];
+      const lastTradePrice = new Map();
+      const latestCurrentPrice = new Map();
+
+      transactions.forEach((tx) => {
+        if (!statsByTicker.has(tx.ticker)) {
+          statsByTicker.set(tx.ticker, baseTickerStats(tx.ticker));
+        }
+        const stats = statsByTicker.get(tx.ticker);
+        lastTradePrice.set(tx.ticker, tx.price);
+        if (Number.isFinite(tx.currentPrice) && tx.currentPrice > 0) {
+          latestCurrentPrice.set(tx.ticker, tx.currentPrice);
+        }
+
+        if (tx.side === "buy") {
+          stats.buyValue += tx.value;
+          stats.buyFee += tx.buyFee;
+          stats.totalCharges += tx.buyFee;
+          stats.buyQty += tx.qty;
+          if (!lotsByTicker.has(tx.ticker)) lotsByTicker.set(tx.ticker, []);
+          lotsByTicker.get(tx.ticker).push({
+            lotId: tx.lotId,
+            qty: tx.qty,
+            price: tx.price,
+            costPerShare: tx.netValue / tx.qty,
+            date: tx.date,
+            stopLoss: tx.stopLoss,
+            takeProfit: tx.takeProfit
+          });
+          return;
+        }
+
+        stats.sellValue += tx.value;
+        stats.sellFee += tx.sellFee;
+        stats.sellTax += tx.sellTax;
+        stats.totalCharges += tx.sellFee + tx.sellTax;
+        stats.sellQty += tx.qty;
+        let remaining = tx.qty;
+        const lots = lotsByTicker.get(tx.ticker) || [];
+        const netSellPrice = tx.netValue / tx.qty;
+        const preferredLotIndex = tx.lotId ? lots.findIndex((lot) => lot.lotId === tx.lotId) : -1;
+        if (preferredLotIndex > 0) {
+          const [preferredLot] = lots.splice(preferredLotIndex, 1);
+          lots.unshift(preferredLot);
+        }
+
+        while (remaining > 0 && lots.length) {
+          const lot = lots[0];
+          const matchedQty = Math.min(remaining, lot.qty);
+          const cost = matchedQty * lot.costPerShare;
+          const proceeds = matchedQty * netSellPrice;
+          const pnl = proceeds - cost;
+          const holdDays = Math.max(0, Math.round((tx.date - lot.date) / 86400000));
+
+          realizedTrades.push({
+            ticker: tx.ticker,
+            date: tx.date,
+            isoDate: tx.isoDate,
+            qty: matchedQty,
+            buyPrice: lot.price,
+            sellPrice: tx.price,
+            cost,
+            proceeds,
+            pnl,
+            roi: cost ? pnl / cost : 0,
+            holdDays
+          });
+
+          stats.realizedPnl += pnl;
+          stats.matchedCost += cost;
+          stats.matchedProceeds += proceeds;
+          stats.matchedQty += matchedQty;
+          stats.winTrades += pnl > 0 ? 1 : 0;
+          stats.lossTrades += pnl < 0 ? 1 : 0;
+          stats.flatTrades += pnl === 0 ? 1 : 0;
+          stats.holdDaysTotal += holdDays;
+          stats.matchCount += 1;
+
+          lot.qty -= matchedQty;
+          remaining -= matchedQty;
+          if (lot.qty <= 0.000001) lots.shift();
+        }
+
+        if (remaining > 0) {
+          unmatchedSells.push({ ...tx, unmatchedQty: remaining });
+        }
+      });
+
+      const positions = [];
+      lotsByTicker.forEach((lots, ticker) => {
+        const qty = lots.reduce((sum, lot) => sum + lot.qty, 0);
+        if (qty <= 0) return;
+        const costValue = lots.reduce((sum, lot) => sum + lot.qty * lot.costPerShare, 0);
+        const avgCost = costValue / qty;
+        const hasCurrentPrice = latestCurrentPrice.has(ticker);
+        const markPrice = hasCurrentPrice ? latestCurrentPrice.get(ticker) : (lastTradePrice.get(ticker) || avgCost);
+        const markPriceSource = hasCurrentPrice ? "Gia_hien_tai" : "Giá giao dịch gần nhất";
+        const estimatedExitRate = 0.002;
+        const marketValueGross = qty * markPrice;
+        const marketValue = marketValueGross * (1 - estimatedExitRate);
+        const unrealizedPnl = marketValue - costValue;
+        const slQty = lots.reduce((sum, lot) => sum + (lot.stopLoss ? lot.qty : 0), 0);
+        const tpQty = lots.reduce((sum, lot) => sum + (lot.takeProfit ? lot.qty : 0), 0);
+        const slPnl = slQty
+          ? lots.reduce((sum, lot) => sum + (lot.stopLoss ? lot.qty * lot.stopLoss * (1 - estimatedExitRate) - lot.qty * lot.costPerShare : 0), 0)
+          : NaN;
+        const tpPnl = tpQty
+          ? lots.reduce((sum, lot) => sum + (lot.takeProfit ? lot.qty * lot.takeProfit * (1 - estimatedExitRate) - lot.qty * lot.costPerShare : 0), 0)
+          : NaN;
+        const weightedSl = slQty
+          ? lots.reduce((sum, lot) => sum + (lot.stopLoss ? lot.qty * lot.stopLoss : 0), 0) / slQty
+          : NaN;
+        const weightedTp = tpQty
+          ? lots.reduce((sum, lot) => sum + (lot.takeProfit ? lot.qty * lot.takeProfit : 0), 0) / tpQty
+          : NaN;
+
+        positions.push({
+          ticker,
+          qty,
+          avgCost,
+          costValue,
+          markPrice,
+          markPriceSource,
+          marketValue,
+          unrealizedPnl,
+          slQty,
+          tpQty,
+          slPnl,
+          tpPnl,
+          weightedSl,
+          weightedTp
+        });
+        const stats = statsByTicker.get(ticker) || baseTickerStats(ticker);
+        stats.openQty = qty;
+        stats.openCost = costValue;
+        stats.markPrice = markPrice;
+        stats.markPriceSource = markPriceSource;
+        stats.unrealizedPnl = unrealizedPnl;
+        statsByTicker.set(ticker, stats);
+      });
+
+      const summary = Array.from(statsByTicker.values()).map((stats) => ({
+        ...stats,
+        realizedRoi: stats.matchedCost ? stats.realizedPnl / stats.matchedCost : NaN,
+        winRate: stats.matchCount ? stats.winTrades / stats.matchCount : NaN,
+        avgHoldDays: stats.matchCount ? stats.holdDaysTotal / stats.matchCount : NaN
+      })).sort((a, b) => b.realizedPnl - a.realizedPnl);
+
+      return {
+        summary,
+        realizedTrades,
+        positions: positions.sort((a, b) => b.costValue - a.costValue),
+        unmatchedSells
+      };
+    }
+
+    function baseTickerStats(ticker) {
+      return {
+        ticker,
+        buyValue: 0,
+        sellValue: 0,
+        buyFee: 0,
+        sellFee: 0,
+        sellTax: 0,
+        totalCharges: 0,
+        buyQty: 0,
+        sellQty: 0,
+        realizedPnl: 0,
+        matchedCost: 0,
+        matchedProceeds: 0,
+        matchedQty: 0,
+        winTrades: 0,
+        lossTrades: 0,
+        flatTrades: 0,
+        matchCount: 0,
+        holdDaysTotal: 0,
+        openQty: 0,
+        openCost: 0,
+        markPrice: 0,
+        unrealizedPnl: 0
+      };
+    }
+
+    // ===== SECTION: FILTERING =====
+    function setupFilters(transactions) {
+      const tickers = Array.from(new Set(transactions.map((tx) => tx.ticker))).sort();
+      els.tickerFilter.innerHTML = `<option value="all">Tất cả</option>` + tickers.map((ticker) => `<option value="${ticker}">${ticker}</option>`).join("");
+
+      els.statusFilter.value = "all";
+      state.dateBounds = getSystemYearDateRange();
+      els.fromDate.value = state.dateBounds.min;
+      els.toDate.value = state.dateBounds.max;
+    }
+
+    function applyFilters() {
+      const ticker = els.tickerFilter.value;
+      const side = els.sideFilter.value;
+      const status = els.statusFilter.value;
+      const from = els.fromDate.value;
+      const to = els.toDate.value;
+
+      const dateTickerFiltered = state.transactions.filter((tx) => {
+        const tickerOk = ticker === "all" || tx.ticker === ticker;
+        const fromOk = !from || tx.isoDate >= from;
+        const toOk = !to || tx.isoDate <= to;
+        return tickerOk && fromOk && toOk;
+      });
+      const openTickers = new Set(analyze(dateTickerFiltered.filter((tx) => !tx.status)).positions.map((pos) => pos.ticker));
+
+      state.filtered = dateTickerFiltered.filter((tx) => {
+        const sideOk = side === "all" || tx.side === side;
+        const statusOk =
+          status === "all" ||
+          (tx.status ? tx.status === status : (
+            (status === "open" && openTickers.has(tx.ticker)) ||
+            (status === "closed" && !openTickers.has(tx.ticker))
+          ));
+        return sideOk && statusOk;
+      });
+
+      renderDashboard();
+    }
+
+    function resetFilters() {
+      els.tickerFilter.value = "all";
+      els.sideFilter.value = "all";
+      els.statusFilter.value = "all";
+      state.dateBounds = getSystemYearDateRange();
+      els.fromDate.value = state.dateBounds.min || "";
+      els.toDate.value = state.dateBounds.max || "";
+      applyFilters();
+    }
+
+    // ===== SECTION: RENDERING =====
+    function renderDashboard() {
+      els.root.classList.add("has-data");
+      const transactions = state.filtered;
+      const analysis = analyze(transactions);
+      renderBadges(transactions, analysis);
+      renderDecisionPanel(transactions, analysis);
+      renderKpis(transactions, analysis);
+      renderCapitalPanel(transactions, analysis);
+      renderCharts(transactions, analysis);
+      renderSummaryTable(analysis.summary);
+      renderPositions(analysis.positions);
+      renderTransactions(transactions);
+      renderExplanations();
+
+      const warningParts = [];
+      if (state.warnings.length) warningParts.push(`${state.warnings.length} dòng bị bỏ qua do sai dữ liệu.`);
+      if (analysis.unmatchedSells.length) warningParts.push(`${analysis.unmatchedSells.length} lệnh bán chưa có đủ lượng mua trước đó để tính FIFO.`);
+      if (warningParts.length) showMessage(warningParts.join(" "), "warning");
+    }
+
+    function buildDecisionMetrics(transactions, analysis) {
+      const realizedPnl = analysis.summary.reduce((sum, item) => sum + item.realizedPnl, 0);
+      const matchedCost = analysis.summary.reduce((sum, item) => sum + item.matchedCost, 0);
+      const openCost = analysis.positions.reduce((sum, pos) => sum + pos.costValue, 0);
+      const openCurrentPnl = analysis.positions.reduce((sum, pos) => sum + pos.unrealizedPnl, 0);
+      const currentPnl = realizedPnl + openCurrentPnl;
+      const investedBase = matchedCost + openCost;
+      const roi = investedBase ? currentPnl / investedBase : NaN;
+
+      const positionsWithSl = analysis.positions.filter((pos) => Number.isFinite(pos.slPnl));
+      const positionsWithTp = analysis.positions.filter((pos) => Number.isFinite(pos.tpPnl));
+      const openSlPnl = positionsWithSl.length
+        ? positionsWithSl.reduce((sum, pos) => sum + pos.slPnl, 0)
+        : NaN;
+      const openTpPnl = positionsWithTp.length
+        ? positionsWithTp.reduce((sum, pos) => sum + pos.tpPnl, 0)
+        : NaN;
+      const scenarioSl = Number.isFinite(openSlPnl) ? realizedPnl + openSlPnl : NaN;
+      const scenarioTp = Number.isFinite(openTpPnl) ? realizedPnl + openTpPnl : NaN;
+      const riskReward = Number.isFinite(openSlPnl) && openSlPnl < 0 && Number.isFinite(openTpPnl) && openTpPnl > 0
+        ? openTpPnl / Math.abs(openSlPnl)
+        : NaN;
+      const closedTrades = analysis.realizedTrades;
+      const winningTrades = closedTrades.filter((trade) => trade.pnl > 0);
+      const losingTrades = closedTrades.filter((trade) => trade.pnl < 0);
+      const grossProfit = winningTrades.reduce((sum, trade) => sum + trade.pnl, 0);
+      const grossLoss = Math.abs(losingTrades.reduce((sum, trade) => sum + trade.pnl, 0));
+      const winRate = closedTrades.length ? winningTrades.length / closedTrades.length : NaN;
+      const lossRate = closedTrades.length ? losingTrades.length / closedTrades.length : NaN;
+      const avgWin = winningTrades.length ? grossProfit / winningTrades.length : 0;
+      const avgLoss = losingTrades.length ? grossLoss / losingTrades.length : 0;
+      const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : (grossProfit > 0 ? Infinity : NaN);
+      const expectancy = closedTrades.length ? (winRate * avgWin) - (lossRate * avgLoss) : NaN;
+      const avgClosedPnl = closedTrades.length ? realizedPnl / closedTrades.length : NaN;
+      const closedRoi = matchedCost ? realizedPnl / matchedCost : NaN;
+
+      const buyNet = transactions.filter((tx) => tx.side === "buy").reduce((sum, tx) => sum + tx.netValue, 0);
+      const sellNet = transactions.filter((tx) => tx.side === "sell").reduce((sum, tx) => sum + tx.netValue, 0);
+      const cash = state.capital ? state.capital.amount - buyNet + sellNet : NaN;
+      const totalOpenQty = analysis.positions.reduce((sum, pos) => sum + pos.qty, 0);
+      const slCoveredQty = analysis.positions.reduce((sum, pos) => sum + pos.slQty, 0);
+      const tpCoveredQty = analysis.positions.reduce((sum, pos) => sum + pos.tpQty, 0);
+      const slCoverage = totalOpenQty ? slCoveredQty / totalOpenQty : 0;
+      const tpCoverage = totalOpenQty ? tpCoveredQty / totalOpenQty : 0;
+
+      let status = "CHƯA CÓ DỮ LIỆU";
+      let statusClass = "status-empty";
+      if (transactions.length) {
+        if (Number.isFinite(roi) && roi >= 0.05 && riskReward >= 2 && (!Number.isFinite(cash) || cash >= 0)) {
+          status = "HIỆU QUẢ TỐT";
+          statusClass = "status-good";
+        } else if (Number.isFinite(roi) && roi >= 0 && riskReward >= 1) {
+          status = "KHẢ QUAN";
+          statusClass = "status-positive";
+        } else if (!Number.isFinite(roi) || roi > -0.03) {
+          status = "CẦN THEO DÕI";
+          statusClass = "status-watch";
+        } else {
+          status = "RỦI RO CAO";
+          statusClass = "status-risk";
+        }
+      }
+
+      return {
+        currentPnl,
+        roi,
+        scenarioSl,
+        scenarioTp,
+        openSlPnl,
+        openTpPnl,
+        riskReward,
+        profitability: {
+          totalTrades: closedTrades.length,
+          avgClosedPnl,
+          closedRoi,
+          portfolioPnl: realizedPnl
+        },
+        strategy: {
+          totalTrades: closedTrades.length,
+          wins: winningTrades.length,
+          losses: losingTrades.length,
+          winRate,
+          profitFactor,
+          expectancy,
+          avgWin,
+          avgLoss
+        },
+        cash,
+        slCoverage,
+        tpCoverage,
+        status,
+        statusClass
+      };
+    }
+
+    function renderDecisionPanel(transactions, analysis) {
+      const metrics = buildDecisionMetrics(transactions, analysis);
+      els.decisionPanel.classList.remove("hidden");
+      els.decisionStatus.className = `status-pill ${metrics.statusClass}`;
+      els.decisionStatus.textContent = metrics.status;
+      els.decisionSubtitle.textContent = `${state.sourceName || "Dữ liệu đang chọn"} • Tính sau phí mua 0,1%, phí bán 0,1% và thuế bán 0,1%.`;
+
+      const setMetric = (element, value, formatter, allowClass = true) => {
+        element.textContent = Number.isFinite(value) ? formatter(value) : "Chưa đủ dữ liệu";
+        if (allowClass) {
+          element.className = `mt-2 text-2xl font-extrabold ${Number.isFinite(value) ? cssClassForValue(value) : "neutral"}`;
+        }
+      };
+
+      setMetric(els.decisionCurrentPnl, metrics.currentPnl, formatMoney);
+      setMetric(els.decisionRoi, metrics.roi, formatPct);
+      setMetric(els.decisionSl, metrics.scenarioSl, formatMoney);
+      setMetric(els.decisionTp, metrics.scenarioTp, formatMoney);
+      els.decisionRr.textContent = Number.isFinite(metrics.riskReward) ? `${metrics.riskReward.toFixed(1)}x` : "Chưa đủ dữ liệu";
+      els.decisionRr.className = `mt-2 text-2xl font-extrabold ${metrics.riskReward >= 2 ? "positive" : metrics.riskReward < 1 ? "negative" : "neutral"}`;
+      els.decisionSlCoverage.textContent = `Đã có SL cho ${formatPct(metrics.slCoverage)} khối lượng đang mở.`;
+      els.decisionTpCoverage.textContent = `Đã có TP cho ${formatPct(metrics.tpCoverage)} khối lượng đang mở.`;
+
+      const reasons = [
+        Number.isFinite(metrics.roi)
+          ? `ROI ròng hiện tại ${formatPct(metrics.roi)} — ${metrics.roi >= 0 ? "đang sinh lời" : "chưa bù hết chi phí và biến động giá"}.`
+          : "Chưa đủ giá vốn để tính ROI.",
+        Number.isFinite(metrics.riskReward)
+          ? `Tỷ lệ lợi nhuận/rủi ro ${metrics.riskReward.toFixed(1)}x — ${metrics.riskReward >= 2 ? "mức kỳ vọng tốt" : "cần xem lại điểm SL/TP"}.`
+          : "Cần nhập đủ SL và TP để đánh giá lợi nhuận/rủi ro.",
+        Number.isFinite(metrics.cash) && metrics.cash < 0
+          ? "Cảnh báo: vốn sử dụng đã vượt vốn ban đầu."
+          : "Mức sử dụng vốn hiện chưa vượt vốn ban đầu."
+      ];
+      els.decisionReasons.innerHTML = reasons.map((reason) => `<p>• ${reason}</p>`).join("");
+
+      renderProfitabilityMetrics(metrics);
+
+      replaceChart("scenarioChart", {
+        type: "bar",
+        data: {
+          labels: ["Nếu SL", "Hiện tại", "Nếu TP"],
+          datasets: [{
+            label: "Lãi/lỗ ròng",
+            data: [
+              Number.isFinite(metrics.scenarioSl) ? metrics.scenarioSl : 0,
+              Number.isFinite(metrics.currentPnl) ? metrics.currentPnl : 0,
+              Number.isFinite(metrics.scenarioTp) ? metrics.scenarioTp : 0
+            ],
+            backgroundColor: ["rgba(214, 69, 69, 0.76)", "rgba(46, 117, 182, 0.76)", "rgba(44, 165, 141, 0.76)"],
+            borderColor: [COLORS.red, COLORS.blue, COLORS.green],
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          ...chartOptions(),
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (context) => `Lãi/lỗ ròng: ${formatMoney(context.parsed.y || 0)}`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderProfitabilityMetrics(metrics) {
+      const profitability = metrics.profitability || {};
+      const strategy = metrics.strategy || {};
+      const noClosedTrades = "Chưa có lệnh đóng";
+      const formatFactor = (value) => {
+        if (value === Infinity) return "Không có lệnh lỗ";
+        return Number.isFinite(value) ? `${value.toFixed(2)}x` : noClosedTrades;
+      };
+      const factorClass = (value) => {
+        if (value === Infinity || value >= 1.5) return "positive";
+        if (Number.isFinite(value) && value < 1) return "negative";
+        return "neutral";
+      };
+      const groups = [
+        {
+          group: "Sinh lời",
+          rows: [
+            {
+              metric: "Lãi/Lỗ",
+              formula: "Giá bán - Giá mua - Phí",
+              meaning: "Tiền lời hoặc lỗ sau giao dịch.",
+              result: Number.isFinite(profitability.avgClosedPnl)
+                ? `${formatMoney(profitability.avgClosedPnl)} / lệnh đã đóng`
+                : noClosedTrades,
+              resultClass: Number.isFinite(profitability.avgClosedPnl) ? cssClassForValue(profitability.avgClosedPnl) : "neutral",
+              edge: "> 0",
+              noEdge: "< 0"
+            },
+            {
+              metric: "% Lợi nhuận",
+              formula: "(Giá bán - Giá mua - Phí) / Giá mua × 100%",
+              meaning: "Mức sinh lời trên vốn bỏ ra.",
+              result: Number.isFinite(profitability.closedRoi) ? formatPct(profitability.closedRoi) : noClosedTrades,
+              resultClass: Number.isFinite(profitability.closedRoi) ? cssClassForValue(profitability.closedRoi) : "neutral",
+              edge: "Dương, càng cao càng tốt",
+              noEdge: "Âm hoặc quá thấp"
+            },
+            {
+              metric: "Lợi nhuận danh mục",
+              formula: "Σ(lãi/lỗ các lệnh)",
+              meaning: "Tổng lãi/lỗ của toàn bộ lệnh.",
+              result: profitability.totalTrades && Number.isFinite(profitability.portfolioPnl)
+                ? `${formatMoney(profitability.portfolioPnl)} (${formatNumber(profitability.totalTrades)} lệnh đã đóng)`
+                : noClosedTrades,
+              resultClass: profitability.totalTrades && Number.isFinite(profitability.portfolioPnl) ? cssClassForValue(profitability.portfolioPnl) : "neutral",
+              edge: "> 0",
+              noEdge: "< 0"
+            }
+          ]
+        },
+        {
+          group: "Chiến lược",
+          rows: [
+            {
+              metric: "Tỷ lệ thắng",
+              formula: "Lệnh thắng / Tổng lệnh × 100%",
+              meaning: "Tỷ lệ lệnh có lãi.",
+              result: strategy.totalTrades ? `${formatPct(strategy.winRate)} (${formatNumber(strategy.wins)}/${formatNumber(strategy.totalTrades)})` : noClosedTrades,
+              resultClass: Number.isFinite(strategy.winRate) ? (strategy.winRate > 0.5 ? "positive" : "negative") : "neutral",
+              edge: "> 50% thường có lợi thế, tùy R/R",
+              noEdge: "Thấp nếu không bù được bằng lãi lớn"
+            },
+            {
+              metric: "Profit Factor",
+              formula: "Tổng lãi / Tổng lỗ",
+              meaning: "Tổng lãi chia cho tổng lỗ.",
+              result: formatFactor(strategy.profitFactor),
+              resultClass: factorClass(strategy.profitFactor),
+              edge: "> 1, tốt hơn nếu > 1.5",
+              noEdge: "< 1"
+            },
+            {
+              metric: "Expectancy",
+              formula: "(Win rate × Lãi TB) - (Loss rate × Lỗ TB)",
+              meaning: "Lãi kỳ vọng trung bình mỗi lệnh.",
+              result: Number.isFinite(strategy.expectancy) ? formatMoney(strategy.expectancy) : noClosedTrades,
+              resultClass: Number.isFinite(strategy.expectancy) ? cssClassForValue(strategy.expectancy) : "neutral",
+              edge: "Dương",
+              noEdge: "Âm"
+            },
+            {
+              metric: "Risk/Reward",
+              formula: "Mục tiêu lời / Mức lỗ",
+              meaning: "So sánh mức lời kỳ vọng với mức lỗ.",
+              result: Number.isFinite(metrics.riskReward) ? `${metrics.riskReward.toFixed(2)}x` : "Chưa đủ SL/TP",
+              resultClass: Number.isFinite(metrics.riskReward) ? (metrics.riskReward > 1 ? "positive" : "negative") : "neutral",
+              edge: "> 1, càng cao càng tốt",
+              noEdge: "≤ 1"
+            }
+          ]
+        }
+      ];
+
+      els.profitabilityMetricsTable.innerHTML = groups.map(({ group, rows }) => (
+        rows.map((row, index) => `
+          <tr>
+            ${index === 0 ? `<td class="font-bold text-[#2E75B6]" rowspan="${rows.length}">${group}</td>` : ""}
+            <td class="font-bold text-[#172033]">${row.metric}</td>
+            <td>${row.formula}</td>
+            <td>${row.meaning}</td>
+            <td class="${row.resultClass} font-bold">${row.result}</td>
+            <td class="positive font-bold">${row.edge}</td>
+            <td class="negative font-bold">${row.noEdge}</td>
+          </tr>
+        `).join("")
+      )).join("");
+    }
+
+    function renderBadges(transactions, analysis) {
+      const tickerCount = new Set(transactions.map((tx) => tx.ticker)).size;
+      const totalValue = transactions.reduce((sum, tx) => sum + tx.value, 0);
+      const realizedPnl = analysis.summary.reduce((sum, item) => sum + item.realizedPnl, 0);
+      const badges = [
+        `${formatNumber(transactions.length)} giao dịch`,
+        `${formatNumber(tickerCount)} mã cổ phiếu`,
+        `${formatMoney(totalValue)} giá trị`,
+        `${formatMoney(realizedPnl)} lãi/lỗ sau phí thuế`
+      ];
+      if (state.capital) badges.push(`${formatMoney(state.capital.amount)} vốn ban đầu`);
+      els.dataBadges.innerHTML = badges.map((text) => `<span class="metric-chip">${text}</span>`).join("");
+    }
+
+    function renderKpis(transactions, analysis) {
+      const totalBuy = transactions.filter((tx) => tx.side === "buy").reduce((sum, tx) => sum + tx.value, 0);
+      const totalSell = transactions.filter((tx) => tx.side === "sell").reduce((sum, tx) => sum + tx.value, 0);
+      const totalCharges = transactions.reduce((sum, tx) => sum + tx.charges, 0);
+      const realizedPnl = analysis.summary.reduce((sum, item) => sum + item.realizedPnl, 0);
+      const matchedCost = analysis.summary.reduce((sum, item) => sum + item.matchedCost, 0);
+      const wins = analysis.summary.reduce((sum, item) => sum + item.winTrades, 0);
+      const matches = analysis.summary.reduce((sum, item) => sum + item.matchCount, 0);
+      const openCost = analysis.positions.reduce((sum, pos) => sum + pos.costValue, 0);
+      const unrealized = analysis.positions.reduce((sum, pos) => sum + pos.unrealizedPnl, 0);
+      const turnover = totalBuy + totalSell;
+      const avgHold = analysis.summary.reduce((sum, item) => sum + (item.avgHoldDays || 0) * item.matchCount, 0) / (matches || 1);
+
+      const cards = [
+        {
+          label: "Lãi/lỗ sau phí thuế",
+          value: formatMoney(realizedPnl),
+          hint: "Chênh lệch giữa tiền bán ròng và giá vốn FIFO đã cộng phí mua.",
+          accent: realizedPnl >= 0 ? "bg-[#EAF7EF]" : "bg-[#FFF0F0]",
+          valueClass: cssClassForValue(realizedPnl)
+        },
+        {
+          label: "ROI sau phí thuế",
+          value: formatPct(matchedCost ? realizedPnl / matchedCost : NaN),
+          hint: "Lãi/lỗ sau phí thuế chia cho giá vốn đã khớp.",
+          accent: "bg-[#EAF3FB]",
+          valueClass: cssClassForValue(realizedPnl)
+        },
+        {
+          label: "Tỷ lệ thắng",
+          value: formatPct(matches ? wins / matches : NaN),
+          hint: "Số lần khớp FIFO có lãi trên tổng số lần khớp.",
+          accent: "bg-[#FFF1E8]",
+          valueClass: "neutral"
+        },
+        {
+          label: "Tổng phí + thuế",
+          value: formatMoney(totalCharges),
+          hint: "Bao gồm phí mua, phí bán và thuế bán trong khoảng lọc.",
+          accent: "bg-[#FFF1E8]",
+          valueClass: "neutral"
+        },
+        {
+          label: "Vòng quay giao dịch",
+          value: formatMoney(turnover),
+          hint: "Tổng giá trị mua và bán trong khoảng lọc.",
+          accent: "bg-[#F3F0FF]",
+          valueClass: "neutral"
+        },
+        {
+          label: "Tổng mua",
+          value: formatMoney(totalBuy),
+          hint: "Tổng tiền đã dùng cho lệnh mua.",
+          accent: "bg-[#EAF3FB]",
+          valueClass: "neutral"
+        },
+        {
+          label: "Tổng bán",
+          value: formatMoney(totalSell),
+          hint: "Tổng tiền thu từ lệnh bán.",
+          accent: "bg-[#FFF1E8]",
+          valueClass: "neutral"
+        },
+        {
+          label: "Vốn còn mở",
+          value: formatMoney(openCost),
+          hint: "Giá vốn FIFO của lượng cổ phiếu chưa bán.",
+          accent: "bg-[#F6F9FC]",
+          valueClass: "neutral"
+        },
+        {
+          label: "P/L tạm tính vị thế mở",
+          value: formatMoney(unrealized),
+          hint: "Giá trị ròng ước tính sau phí bán và thuế bán; ưu tiên cột Gia_hien_tai.",
+          accent: unrealized >= 0 ? "bg-[#EAF7EF]" : "bg-[#FFF0F0]",
+          valueClass: cssClassForValue(unrealized)
+        },
+        {
+          label: "Thời gian nắm giữ TB",
+          value: `${Number.isFinite(avgHold) ? avgHold.toFixed(1) : "0.0"} ngày`,
+          hint: "Số ngày trung bình giữa lệnh mua và lệnh bán đã khớp FIFO.",
+          accent: "bg-[#F6F9FC]",
+          valueClass: "neutral"
+        }
+      ];
+
+      els.kpiCount.textContent = `${formatNumber(cards.length)} thẻ`;
+      els.kpiGrid.innerHTML = cards.map((card) => `
+        <article class="kpi-card p-4" title="${card.hint}">
+          <div class="mb-4 flex items-start justify-between gap-3">
+            <p class="text-sm font-bold text-[#475467]">${card.label}</p>
+            <span class="h-9 w-9 shrink-0 rounded-full ${card.accent}"></span>
+          </div>
+          <p class="break-words text-2xl font-extrabold ${card.valueClass}">${card.value}</p>
+          <p class="mt-2 text-xs leading-5 text-[#667085]">${card.hint}</p>
+        </article>
+      `).join("");
+    }
+
+    function renderCapitalPanel(transactions, analysis) {
+      if (!state.capital) {
+        els.capitalPanel.classList.add("hidden");
+        els.capitalPanel.innerHTML = "";
+        return;
+      }
+
+      const capital = state.capital.amount;
+      const buyNet = transactions.filter((tx) => tx.side === "buy").reduce((sum, tx) => sum + tx.netValue, 0);
+      const sellNet = transactions.filter((tx) => tx.side === "sell").reduce((sum, tx) => sum + tx.netValue, 0);
+      const realizedPnl = analysis.summary.reduce((sum, item) => sum + item.realizedPnl, 0);
+      const unrealized = analysis.positions.reduce((sum, pos) => sum + pos.unrealizedPnl, 0);
+      const openCost = analysis.positions.reduce((sum, pos) => sum + pos.costValue, 0);
+      const totalCharges = transactions.reduce((sum, tx) => sum + tx.charges, 0);
+      const estimatedCash = capital - buyNet + sellNet;
+      const tradingResult = realizedPnl + unrealized;
+      const estimatedNav = capital + tradingResult;
+      const utilization = capital ? buyNet / capital : NaN;
+      const roiOnCapital = capital ? tradingResult / capital : NaN;
+
+      const items = [
+        ["Vốn ban đầu", formatMoney(capital), `Đọc từ sheet "${state.capital.sheetName}".`, "neutral"],
+        ["Vốn mua đã dùng", formatMoney(buyNet), "Tổng tiền mua đã cộng phí mua trong bộ lọc.", "neutral"],
+        ["Tiền mặt ước tính", formatMoney(estimatedCash), "Vốn ban đầu trừ tiền mua, cộng tiền bán ròng.", cssClassForValue(estimatedCash)],
+        ["Tỷ lệ sử dụng vốn", formatPct(utilization), "Vốn mua đã dùng chia cho vốn ban đầu.", utilization > 1 ? "negative" : "neutral"],
+        ["Tiền bán ròng", formatMoney(sellNet), "Tổng tiền bán sau phí bán và thuế bán.", "neutral"],
+        ["Phí + thuế", formatMoney(totalCharges), "Tổng phí mua, phí bán và thuế bán.", "neutral"],
+        ["Kết quả sau phí thuế", formatMoney(tradingResult), "Lãi/lỗ đã chốt cộng P/L tạm tính vị thế mở.", cssClassForValue(tradingResult)],
+        ["NAV tạm tính", formatMoney(estimatedNav), "Vốn ban đầu cộng kết quả giao dịch sau phí thuế.", cssClassForValue(estimatedNav - capital)],
+        ["ROI trên vốn", formatPct(roiOnCapital), "Kết quả sau phí thuế chia cho vốn ban đầu.", cssClassForValue(tradingResult)],
+        ["Vốn còn mở", formatMoney(openCost), "Giá vốn FIFO còn nằm trong vị thế mở.", "neutral"]
+      ];
+
+      els.capitalPanel.classList.remove("hidden");
+      els.capitalPanel.innerHTML = `
+        <div class="mb-3 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 class="text-base font-bold">Báo cáo vốn</h2>
+            <p class="text-xs text-[#667085]">Kết hợp sheet vốn với giao dịch đang được lọc trong dashboard.</p>
+          </div>
+          <span class="metric-chip">Nguồn: ${state.capital.sheetName}</span>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          ${items.map(([label, value, hint, valueClass]) => `
+            <article class="rounded-lg border border-[#dce6f2] bg-white p-3" title="${hint}">
+              <p class="text-xs font-bold uppercase text-[#667085]">${label}</p>
+              <p class="mt-2 break-words text-lg font-extrabold ${valueClass}">${value}</p>
+              <p class="mt-1 text-xs leading-5 text-[#667085]">${hint}</p>
+            </article>
+          `).join("")}
+        </div>
+      `;
+    }
+
+    function renderSummaryTable(summary) {
+      els.summaryCount.textContent = `${formatNumber(summary.length)} mã`;
+      if (!summary.length) {
+        els.summaryTable.innerHTML = `<tr><td colspan="8" class="text-center text-[#667085]">Không có dữ liệu phù hợp bộ lọc.</td></tr>`;
+        return;
+      }
+
+      els.summaryTable.innerHTML = summary.map((item) => `
+        <tr title="Lãi/lỗ FIFO sau phí thuế của ${item.ticker}">
+          <td class="font-bold text-[#2E75B6]">${item.ticker}</td>
+          <td>${formatMoney(item.buyValue)}</td>
+          <td>${formatMoney(item.sellValue)}</td>
+          <td>${formatMoney(item.totalCharges)}</td>
+          <td class="${cssClassForValue(item.realizedPnl)} font-bold">${formatMoney(item.realizedPnl)}</td>
+          <td class="${cssClassForValue(item.realizedPnl)}">${formatPct(item.realizedRoi)}</td>
+          <td>${formatPct(item.winRate)}</td>
+          <td>${formatNumber(item.openQty)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderPositions(positions) {
+      if (!positions.length) {
+        els.positionList.innerHTML = `<div class="rounded-lg border border-dashed border-[#dce6f2] p-4 text-sm text-[#667085]">Không còn vị thế mở trong dữ liệu đang lọc.</div>`;
+        return;
+      }
+
+      els.positionList.innerHTML = positions.map((pos) => {
+        const capitalUsage = state.capital && state.capital.amount > 0 && Number.isFinite(pos.costValue)
+          ? pos.costValue / state.capital.amount
+          : NaN;
+        const capitalUsageClass = Number.isFinite(capitalUsage) && capitalUsage > 1 ? "text-[#991B1B]" : "text-[#172033]";
+        const capitalUsageText = Number.isFinite(capitalUsage) ? formatPct(capitalUsage) : "N/A";
+        const slDistancePct = Number.isFinite(pos.weightedSl) && Number.isFinite(pos.avgCost) && pos.avgCost
+          ? (pos.weightedSl - pos.avgCost) / pos.avgCost
+          : NaN;
+        const slRiskPct = Number.isFinite(pos.slPnl) && Number.isFinite(pos.costValue) && pos.costValue
+          ? pos.slPnl / pos.costValue
+          : NaN;
+
+        return `
+          <article class="rounded-lg border border-[#dce6f2] bg-white p-4" title="P/L tạm tính theo ${pos.markPriceSource}. % SL = SL bình quân / giá vốn bình quân - 1. % rủi ro tại SL = nếu SL / giá vốn vị thế.">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="text-lg font-extrabold text-[#2E75B6]">${pos.ticker}</h3>
+              <span class="${cssClassForValue(pos.unrealizedPnl)} text-sm font-bold">${formatMoney(pos.unrealizedPnl)}</span>
+            </div>
+            <dl class="mt-3 grid grid-cols-2 gap-2 text-xs text-[#667085]">
+              <div><dt>Số lượng</dt><dd class="font-bold text-[#172033]">${formatNumber(pos.qty)}</dd></div>
+              <div><dt>Giá vốn TB</dt><dd class="font-bold text-[#172033]">${formatMoney(pos.avgCost)}</dd></div>
+              <div><dt>Giá định giá</dt><dd class="font-bold text-[#172033]">${formatMoney(pos.markPrice)}</dd></div>
+              <div><dt>Nguồn giá</dt><dd class="font-bold text-[#172033]">${pos.markPriceSource}</dd></div>
+              <div><dt>Giá vốn</dt><dd class="font-bold text-[#172033]">${formatMoney(pos.costValue)}</dd></div>
+              <div><dt>Tỷ lệ sử dụng vốn</dt><dd class="font-bold ${capitalUsageClass}">${capitalUsageText}</dd></div>
+              <div><dt>SL bình quân</dt><dd class="font-bold text-[#991B1B]">${Number.isFinite(pos.weightedSl) ? formatMoney(pos.weightedSl) : "Chưa nhập"}</dd></div>
+              <div><dt>% SL</dt><dd class="font-bold ${cssClassForValue(slDistancePct)}">${Number.isFinite(slDistancePct) ? formatPct(slDistancePct) : "N/A"}</dd></div>
+              <div><dt>Nếu SL</dt><dd class="font-bold ${cssClassForValue(pos.slPnl)}">${Number.isFinite(pos.slPnl) ? formatMoney(pos.slPnl) : "N/A"}</dd></div>
+              <div><dt>% rủi ro tại SL</dt><dd class="font-bold ${cssClassForValue(slRiskPct)}">${Number.isFinite(slRiskPct) ? formatPct(slRiskPct) : "N/A"}</dd></div>
+              <div><dt>TP bình quân</dt><dd class="font-bold text-[#166534]">${Number.isFinite(pos.weightedTp) ? formatMoney(pos.weightedTp) : "Chưa nhập"}</dd></div>
+              <div><dt>Nếu TP</dt><dd class="font-bold ${cssClassForValue(pos.tpPnl)}">${Number.isFinite(pos.tpPnl) ? formatMoney(pos.tpPnl) : "N/A"}</dd></div>
+            </dl>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function buildNormalizedTradeRows(transactions) {
+      const rowsByKey = new Map();
+
+      const getRow = (tx) => {
+        const key = `${tx.rowIndex || tx.lotId || tx.id}-${tx.ticker}`;
+        if (!rowsByKey.has(key)) {
+          rowsByKey.set(key, {
+            key,
+            rowIndex: tx.rowIndex,
+            lotId: tx.lotId,
+            ticker: tx.ticker,
+            status: tx.status || "open",
+            statusLabel: tx.statusLabel || "Đang mở",
+            qty: tx.qty,
+            buyDate: null,
+            buyIsoDate: "",
+            sellDate: null,
+            sellIsoDate: "",
+            buyPrice: NaN,
+            sellPrice: NaN,
+            currentPrice: tx.currentPrice,
+            stopLoss: tx.stopLoss,
+            takeProfit: tx.takeProfit,
+            costValue: NaN,
+            proceeds: NaN
+          });
+        }
+        return rowsByKey.get(key);
+      };
+
+      transactions.forEach((tx) => {
+        const row = getRow(tx);
+        row.status = tx.status || row.status;
+        row.statusLabel = tx.statusLabel || row.statusLabel;
+        row.qty = Number.isFinite(tx.qty) ? tx.qty : row.qty;
+        row.currentPrice = Number.isFinite(tx.currentPrice) ? tx.currentPrice : row.currentPrice;
+        row.stopLoss = Number.isFinite(tx.stopLoss) ? tx.stopLoss : row.stopLoss;
+        row.takeProfit = Number.isFinite(tx.takeProfit) ? tx.takeProfit : row.takeProfit;
+
+        if (tx.side === "buy") {
+          row.buyDate = tx.date;
+          row.buyIsoDate = tx.isoDate;
+          row.buyPrice = tx.price;
+          row.costValue = tx.netValue;
+        } else {
+          row.sellDate = tx.date;
+          row.sellIsoDate = tx.isoDate;
+          row.sellPrice = tx.price;
+          row.proceeds = tx.netValue;
+          row.status = "closed";
+          row.statusLabel = "Đã đóng";
+        }
+      });
+
+      return Array.from(rowsByKey.values()).map((row) => {
+        const costPerShare = Number.isFinite(row.costValue) && row.qty ? row.costValue / row.qty : row.buyPrice;
+        const pnl = row.status === "closed" && Number.isFinite(row.proceeds) && Number.isFinite(row.costValue)
+          ? row.proceeds - row.costValue
+          : NaN;
+        const profitPct = Number.isFinite(pnl) && Number.isFinite(row.costValue) && row.costValue
+          ? pnl / row.costValue
+          : NaN;
+        const risk = Number.isFinite(row.stopLoss) && Number.isFinite(row.buyPrice) ? Math.abs(row.buyPrice - row.stopLoss) : NaN;
+        const reward = Number.isFinite(row.takeProfit) && Number.isFinite(row.buyPrice) ? Math.abs(row.takeProfit - row.buyPrice) : NaN;
+        const plannedRiskReward = risk > 0 && reward > 0 ? reward / risk : NaN;
+        const estimatedExitRate = 0.002;
+        const stopNetValue = Number.isFinite(row.stopLoss) && Number.isFinite(row.qty)
+          ? row.qty * row.stopLoss * (1 - estimatedExitRate)
+          : NaN;
+        const riskCapital = Number.isFinite(row.costValue) && Number.isFinite(stopNetValue)
+          ? Math.abs(row.costValue - stopNetValue)
+          : NaN;
+        const actualRiskReward = row.status === "closed" && Number.isFinite(pnl) && riskCapital > 0
+          ? pnl / riskCapital
+          : NaN;
+        const riskReward = Number.isFinite(actualRiskReward) ? actualRiskReward : plannedRiskReward;
+        const holdingEndDate = row.sellDate || new Date();
+        const holdDays = row.buyDate ? Math.max(0, Math.round((holdingEndDate - row.buyDate) / 86400000)) : NaN;
+        const capitalUsage = state.capital && state.capital.amount && Number.isFinite(row.costValue)
+          ? row.costValue / state.capital.amount
+          : NaN;
+        return { ...row, costPerShare, pnl, profitPct, capitalUsage, riskReward, plannedRiskReward, actualRiskReward, holdDays };
+      }).sort((a, b) => {
+        const aDate = a.buyDate || a.sellDate || new Date(0);
+        const bDate = b.buyDate || b.sellDate || new Date(0);
+        const byDate = aDate - bDate;
+        if (byDate !== 0) return byDate;
+        return Number(a.rowIndex || 0) - Number(b.rowIndex || 0);
+      });
+    }
+
+    function isIsoInRange(isoDate, from, to) {
+      if (!isoDate) return false;
+      return (!from || isoDate >= from) && (!to || isoDate <= to);
+    }
+
+    function filterNormalizedTradeRows(rows) {
+      const ticker = els.tickerFilter.value;
+      const side = els.sideFilter.value;
+      const status = els.statusFilter.value;
+      const from = els.fromDate.value;
+      const to = els.toDate.value;
+
+      return rows.filter((row) => {
+        const tickerOk = ticker === "all" || row.ticker === ticker;
+        const statusOk = status === "all" || row.status === status;
+        const sideOk = side === "all" || side === "buy" || (side === "sell" && row.status === "closed");
+        const buyInRange = isIsoInRange(row.buyIsoDate, from, to);
+        const sellInRange = isIsoInRange(row.sellIsoDate, from, to);
+        const dateOk = side === "buy" ? buyInRange : side === "sell" ? sellInRange : (buyInRange || sellInRange);
+        return tickerOk && statusOk && sideOk && dateOk;
+      });
+    }
+
+    function renderTransactions() {
+      const tradeRows = filterNormalizedTradeRows(buildNormalizedTradeRows(state.transactions));
+      els.transactionCount.textContent = `${formatNumber(tradeRows.length)} lệnh`;
+      if (!tradeRows.length) {
+        els.transactionTable.innerHTML = `<tr><td colspan="13" class="text-center text-[#667085]">Không có giao dịch phù hợp bộ lọc.</td></tr>`;
+        return;
+      }
+
+      els.transactionTable.innerHTML = tradeRows.map((row) => `
+        <tr title="Dòng Excel ${row.rowIndex}. Lệnh đã đóng: R thực tế = lợi nhuận / rủi ro theo SL sau phí ước tính; lệnh đang mở: R:R kế hoạch = |TP - giá mua| / |giá mua - SL|.">
+          <td>${displayDate(row.buyDate)}</td>
+          <td>${row.sellDate ? displayDate(row.sellDate) : "Chưa bán"}</td>
+          <td class="font-bold text-[#2E75B6]">${row.ticker}</td>
+          <td><span class="rounded-full px-2 py-1 text-xs font-bold ${row.status === "closed" ? "bg-[#F2F4F7] text-[#475467]" : "bg-[#EAF7EF] text-[#166534]"}">${row.statusLabel || "N/A"}</span></td>
+          <td>${formatNumber(row.qty)}</td>
+          <td>${Number.isFinite(row.holdDays) ? formatNumber(row.holdDays) : "N/A"}</td>
+          <td title="Tổng giá vốn: ${Number.isFinite(row.costValue) ? formatMoney(row.costValue) : "N/A"}">${Number.isFinite(row.costPerShare) ? formatMoney(row.costPerShare) : "N/A"}</td>
+          <td class="font-semibold ${Number.isFinite(row.capitalUsage) ? (row.capitalUsage > 1 ? "negative" : "neutral") : "neutral"}">${Number.isFinite(row.capitalUsage) ? formatPct(row.capitalUsage) : "N/A"}</td>
+          <td>${Number.isFinite(row.stopLoss) ? formatMoney(row.stopLoss) : "Chưa nhập"}</td>
+          <td>${Number.isFinite(row.sellPrice) ? formatMoney(row.sellPrice) : "Chưa bán"}</td>
+          <td class="font-semibold ${Number.isFinite(row.pnl) ? cssClassForValue(row.pnl) : "neutral"}">${Number.isFinite(row.pnl) ? formatMoney(row.pnl) : "Chưa chốt"}</td>
+          <td class="font-semibold ${Number.isFinite(row.profitPct) ? cssClassForValue(row.profitPct) : "neutral"}">${Number.isFinite(row.profitPct) ? formatPct(row.profitPct) : "N/A"}</td>
+          <td class="font-semibold ${Number.isFinite(row.riskReward) ? (row.status === "closed" ? cssClassForValue(row.riskReward) : (row.riskReward > 1 ? "positive" : "negative")) : "neutral"}">${Number.isFinite(row.riskReward) ? row.riskReward.toFixed(1) : "N/A"}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderExplanations() {
+      const items = [
+        ["Lãi/lỗ sau phí thuế", "Đo hiệu quả thật sự của phần đã bán. Dashboard dùng FIFO, cộng phí mua vào giá vốn và trừ phí bán, thuế bán khỏi tiền bán."],
+        ["ROI sau phí thuế", "Cho biết mỗi đồng vốn đã khớp tạo ra bao nhiêu phần trăm lãi/lỗ sau chi phí giao dịch. Chỉ số này tốt để so sánh giữa các mã có quy mô vốn khác nhau."],
+        ["Tỷ lệ thắng", "Tỷ trọng các lần khớp FIFO có lãi. Tỷ lệ cao nhưng lãi nhỏ vẫn cần xem thêm ROI và lãi/lỗ tuyệt đối."],
+        ["Vòng quay giao dịch", "Tổng giá trị mua cộng bán. Vòng quay lớn giúp thấy cường độ giao dịch và áp lực vận hành vốn."],
+        ["Vốn còn mở", "Giá vốn của lượng cổ phiếu chưa bán. Đây là phần rủi ro vẫn đang nằm trong danh mục."],
+        ["Tỷ lệ sử dụng vốn", "Trong thẻ vị thế mở, chỉ số này bằng giá vốn FIFO còn mở của từng mã chia cho vốn ban đầu từ sheet Von. Nếu chưa có vốn ban đầu thì dashboard hiển thị N/A."],
+        ["% SL", "Trong thẻ vị thế mở, chỉ số này bằng SL bình quân chia cho giá vốn bình quân rồi trừ 1. Số âm nghĩa là SL nằm dưới giá vốn bình quân; số dương nghĩa là SL đã cao hơn giá vốn bình quân."],
+        ["% rủi ro tại SL", "Trong thẻ vị thế mở, chỉ số này bằng kịch bản Nếu SL chia cho giá vốn FIFO còn mở. Dashboard dùng cùng giả định phí bán và thuế bán ước tính như dòng Nếu SL."],
+        ["P/L tạm tính vị thế mở", "Ước tính theo cột Gia_hien_tai trong file Excel. Nếu mã chưa có Gia_hien_tai hợp lệ, dashboard tự dùng giá giao dịch gần nhất trong dữ liệu đang lọc."],
+        ["Thời gian nắm giữ", "Giúp phân biệt giao dịch ngắn hạn và vị thế giữ lâu. Nắm giữ càng lâu càng cần kiểm soát rủi ro vốn bị khóa."],
+        ["Phí và thuế", "Mặc định phí mua 0,1%, phí bán 0,1%, thuế bán 0,1%. Nếu Excel có cột riêng, dashboard ưu tiên số trong file."],
+        ["Kịch bản SL / TP", "Ước tính lãi/lỗ ròng nếu vị thế mở chạm mức dừng lỗ hoặc chốt lời. Tỷ lệ TP/SL từ 2,0x trở lên cho thấy lợi nhuận kỳ vọng đang đủ hấp dẫn so với rủi ro."],
+        ["Vốn ban đầu", "Đọc từ sheet có tên hoặc nội dung chứa chữ vốn. Dashboard dùng vốn này để tính tỷ lệ sử dụng vốn, NAV tạm tính và ROI trên vốn."],
+        ["Lệnh bán thiếu hàng", "Nếu bán nhiều hơn lượng mua trước đó, phần dư không được tính lãi/lỗ FIFO và dashboard sẽ hiện cảnh báo."]
+      ];
+
+      els.explainGrid.innerHTML = items.map(([title, body]) => `
+        <article class="explain-item p-4">
+          <h3 class="text-sm font-extrabold text-[#172033]">${title}</h3>
+          <p class="mt-2 text-sm leading-6 text-[#667085]">${body}</p>
+        </article>
+      `).join("");
+    }
+
+    // ===== SECTION: CHARTS =====
+    function renderCharts(transactions, analysis) {
+      Chart.defaults.font.family = "Inter, system-ui, sans-serif";
+      Chart.defaults.color = "#475467";
+
+      renderPnlByTicker(analysis.summary);
+      renderTurnover(analysis.summary);
+      renderCashflow(transactions);
+      renderCumulativePnl(analysis.realizedTrades);
+    }
+
+    function chartOptions({ money = true } = {}) {
+      return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { labels: { usePointStyle: true, boxWidth: 8 } },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const value = context.parsed.y ?? context.parsed ?? 0;
+                return `${context.dataset.label || context.label}: ${money ? formatMoney(value) : formatNumber(value)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false } },
+          y: {
+            ticks: {
+              callback: (value) => money ? compactMoney(value) : formatNumber(value)
+            },
+            grid: { color: "rgba(102, 112, 133, 0.14)" }
+          }
+        }
+      };
+    }
+
+    function compactMoney(value) {
+      const abs = Math.abs(value);
+      if (abs >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} tỷ`;
+      if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} tr`;
+      if (abs >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
+      return value;
+    }
+
+    function replaceChart(id, config) {
+      if (state.charts[id]) state.charts[id].destroy();
+      const ctx = document.getElementById(id);
+      state.charts[id] = new Chart(ctx, config);
+    }
+
+    function renderPnlByTicker(summary) {
+      replaceChart("pnlByTickerChart", {
+        type: "bar",
+        data: {
+          labels: summary.map((item) => item.ticker),
+          datasets: [{
+            label: "Lãi/lỗ sau phí thuế",
+            data: summary.map((item) => item.realizedPnl),
+            backgroundColor: summary.map((item) => item.realizedPnl >= 0 ? "rgba(44, 165, 141, 0.72)" : "rgba(214, 69, 69, 0.72)"),
+            borderColor: summary.map((item) => item.realizedPnl >= 0 ? "#2CA58D" : "#D64545"),
+            borderWidth: 1,
+            borderRadius: 6
+          }]
+        },
+        options: chartOptions()
+      });
+    }
+
+    function renderTurnover(summary) {
+      const labels = summary.map((item) => item.ticker);
+      const data = summary.map((item) => item.buyValue + item.sellValue);
+      replaceChart("turnoverChart", {
+        type: "doughnut",
+        data: {
+          labels,
+          datasets: [{
+            label: "Giá trị giao dịch",
+            data,
+            backgroundColor: ["#2E75B6", "#ED7D31", "#2CA58D", "#F3B23C", "#7C6AD8", "#D64545", "#667085"],
+            borderColor: "#fff",
+            borderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "62%",
+          plugins: {
+            legend: { position: "bottom", labels: { usePointStyle: true, boxWidth: 8 } },
+            tooltip: {
+              callbacks: {
+                label: (context) => `${context.label}: ${formatMoney(context.parsed || 0)}`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderCashflow(transactions) {
+      const byDate = new Map();
+      transactions.forEach((tx) => {
+        if (!byDate.has(tx.isoDate)) byDate.set(tx.isoDate, { buy: 0, sell: 0 });
+        byDate.get(tx.isoDate)[tx.side] += tx.value;
+      });
+
+      const labels = Array.from(byDate.keys()).sort();
+      replaceChart("cashflowChart", {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "Mua",
+              data: labels.map((date) => byDate.get(date).buy),
+              borderColor: COLORS.blue,
+              backgroundColor: COLORS.paleBlue,
+              tension: 0.35,
+              fill: true,
+              pointRadius: 4
+            },
+            {
+              label: "Bán",
+              data: labels.map((date) => byDate.get(date).sell),
+              borderColor: COLORS.orange,
+              backgroundColor: COLORS.paleOrange,
+              tension: 0.35,
+              fill: true,
+              pointRadius: 4
+            }
+          ]
+        },
+        options: chartOptions()
+      });
+    }
+
+    function renderCumulativePnl(realizedTrades) {
+      const sorted = [...realizedTrades].sort((a, b) => a.date - b.date);
+      let running = 0;
+      const byDate = new Map();
+      sorted.forEach((trade) => {
+        running += trade.pnl;
+        byDate.set(trade.isoDate, running);
+      });
+      const labels = Array.from(byDate.keys()).sort();
+
+      replaceChart("cumPnlChart", {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "Lãi/lỗ lũy kế",
+            data: labels.map((date) => byDate.get(date)),
+            borderColor: COLORS.green,
+            backgroundColor: "rgba(44, 165, 141, 0.16)",
+            tension: 0.35,
+            fill: true,
+            pointRadius: 4
+          }]
+        },
+        options: chartOptions()
+      });
+    }
+
+    // ===== SECTION: MESSAGES AND EMPTY STATE =====
+    function showMessage(text, type = "info") {
+      const palette = {
+        info: "border-[#dce6f2] bg-[#f6f9fc] text-[#475467]",
+        success: "border-[#B7E4C7] bg-[#EAF7EF] text-[#166534]",
+        warning: "border-[#FED7AA] bg-[#FFF7ED] text-[#9A3412]",
+        error: "border-[#FECACA] bg-[#FFF0F0] text-[#991B1B]"
+      };
+      els.messageBox.className = `mb-5 rounded-lg border p-4 text-sm ${palette[type] || palette.info}`;
+      els.messageBox.textContent = text;
+      els.messageBox.classList.remove("hidden");
+    }
+
+    function hideMessage() {
+      els.messageBox.classList.add("hidden");
+      els.messageBox.textContent = "";
+    }
+
+    function showExpectedFormat() {
+      showMessage("Cấu trúc cần có: Ma_cp, Loai_lenh, Ngay_Mua, So_luong, Gia_mua. Nếu có Ngay_ban và Gia_ban thì dashboard xem dòng đó là Đã đóng; nếu chưa có Ngay_ban thì là Đang mở. Nên có thêm Gia_hien_tai, SL, TP và Trang_thai để theo dõi vị thế. Phi_mua, Phi_ban, Thue_ban là cột tùy chọn; nếu thiếu, dashboard tự tính 0,1%. Sheet vốn nên có tên Von và một ô số vốn ban đầu.", "info");
+    }
+
+    function renderEmpty() {
+      els.root.classList.remove("has-data");
+      els.decisionPanel.classList.add("hidden");
+      els.dataBadges.innerHTML = `<span class="metric-chip">Chưa có dữ liệu</span>`;
+      els.kpiGrid.innerHTML = "";
+      els.kpiCount.textContent = "0 thẻ";
+      els.summaryTable.innerHTML = `<tr><td colspan="8" class="text-center text-[#667085]">Hãy tải file Excel để xem dashboard.</td></tr>`;
+      els.positionList.innerHTML = `<div class="rounded-lg border border-dashed border-[#dce6f2] p-4 text-sm text-[#667085]">Chưa có dữ liệu vị thế.</div>`;
+      els.transactionTable.innerHTML = `<tr><td colspan="13" class="text-center text-[#667085]">Chưa có dữ liệu giao dịch.</td></tr>`;
+      els.capitalPanel.classList.add("hidden");
+      els.capitalPanel.innerHTML = "";
+      els.summaryCount.textContent = "0 mã";
+      els.transactionCount.textContent = "0 dòng";
+      updatePrintPdfButton();
+      renderExplanations();
+      ["scenarioChart", "pnlByTickerChart", "turnoverChart", "cashflowChart", "cumPnlChart"].forEach((id) => {
+        if (state.charts[id]) {
+          state.charts[id].destroy();
+          delete state.charts[id];
+        }
+      });
+    }
+
+    function loadDefaultSnapshot() {
+      return renderEmpty();
+      try {
+        const { transactions, warnings } = normalizeRows(DEFAULT_SNAPSHOT_ROWS);
+        state.rawRows = DEFAULT_SNAPSHOT_ROWS;
+        state.transactions = transactions;
+        state.filtered = transactions;
+        state.warnings = warnings;
+        state.capital = { amount: 304000000, sheetName: "Von" };
+        state.sourceName = "_Data_hoan_thien.xlsx • snapshot hiện tại";
+        setupFilters(transactions);
+        applyFilters();
+        updatePrintPdfButton();
+        showMessage("Đang hiển thị nhanh snapshot hiện tại. Chọn “Mở file Excel” để cập nhật theo dữ liệu mới nhất.", "info");
+      } catch (error) {
+        renderEmpty();
+        showMessage("Không thể nạp snapshot mặc định. Hãy chọn file Excel để xem dashboard.", "warning");
+      }
+    }
+
+    // ===== SECTION: INIT =====
+    bindEvents();
+    renderEmpty();
+  </script>
+</body>
+</html>
