@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dashboard hiệu quả đầu tư v8</title>
+  <title>Dashboard hiệu quả đầu tư v9</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -43,13 +43,14 @@
     .dashboard-shell > #positionSizeTool { order: 4; }
     .dashboard-shell > #dashboardFilters { order: 5; }
     .dashboard-shell > #capitalPanel { order: 6; }
-    .dashboard-shell > #summaryPositionSection { order: 7; }
-    .dashboard-shell > #openOrderSection { order: 8; }
-    .dashboard-shell > #transactionLogSection { order: 9; }
-    .dashboard-shell > #decisionPanel { order: 10; }
-    .dashboard-shell > #kpiSection { order: 11; }
-    .dashboard-shell > #chartSection { order: 12; }
-    .dashboard-shell > #explainSection { order: 13; }
+    .dashboard-shell > #attentionPanel { order: 7; }
+    .dashboard-shell > #summaryPositionSection { order: 8; }
+    .dashboard-shell > #openOrderSection { order: 9; }
+    .dashboard-shell > #transactionLogSection { order: 10; }
+    .dashboard-shell > #decisionPanel { order: 11; }
+    .dashboard-shell > #kpiSection { order: 12; }
+    .dashboard-shell > #chartSection { order: 13; }
+    .dashboard-shell > #explainSection { order: 14; }
     .dashboard-shell:not(.has-data) > #dashboardFilters,
     .dashboard-shell:not(.has-data) > #capitalPanel,
     .dashboard-shell:not(.has-data) > #decisionPanel,
@@ -154,6 +155,50 @@
       cursor: not-allowed;
       opacity: 0.48;
     }
+
+    .quick-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: #475467;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 8px 11px;
+      transition: border 0.16s ease, background 0.16s ease, color 0.16s ease;
+    }
+
+    .quick-filter:hover,
+    .quick-filter.active {
+      border-color: var(--blue);
+      background: var(--soft-blue);
+      color: var(--blue);
+    }
+
+    .quick-filter .count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.78);
+      padding: 2px 7px;
+      color: #172033;
+      font-weight: 900;
+    }
+
+    .attention-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 14px;
+    }
+
+    .attention-item.risk { border-color: #fecaca; background: #fff7f7; }
+    .attention-item.watch { border-color: #fde68a; background: #fffbeb; }
+    .attention-item.good { border-color: #bbf7d0; background: #f5fff8; }
 
     .table-wrap {
       overflow-x: auto;
@@ -302,7 +347,7 @@
     <header class="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div>
         <p class="text-sm font-semibold uppercase text-[#ED7D31]">File Excel giao dịch cổ phiếu</p>
-        <h1 class="mt-1 text-2xl font-extrabold text-[#172033] md:text-4xl">Dashboard hiệu quả đầu tư v8</h1>
+        <h1 class="mt-1 text-2xl font-extrabold text-[#172033] md:text-4xl">Dashboard hiệu quả đầu tư v9</h1>
         <div class="mt-3 flex flex-wrap gap-2" id="dataBadges">
           <span class="metric-chip">Chưa có dữ liệu</span>
         </div>
@@ -487,6 +532,17 @@
 
     <section id="capitalPanel" class="panel mb-5 hidden p-4"></section>
 
+    <section id="attentionPanel" class="dashboard-report panel mb-5 p-4">
+      <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 class="text-base font-bold">Việc cần chú ý hôm nay</h2>
+          <p class="text-xs text-[#667085]">Tự động gom các điểm cần xem trước: lệnh gần SL, thiếu giá hiện tại, thiếu SL/TP, rủi ro cao và tỷ lệ vốn cao.</p>
+        </div>
+        <span id="attentionCount" class="metric-chip">0 mục</span>
+      </div>
+      <div id="attentionList" class="grid gap-3 md:grid-cols-2 xl:grid-cols-4"></div>
+    </section>
+
     <section id="chartSection" class="dashboard-report mb-5 grid gap-4 xl:grid-cols-2">
       <div class="panel p-4">
         <div class="mb-3 flex items-center justify-between gap-3">
@@ -565,6 +621,8 @@
         </div>
         <span id="openOrderCount" class="metric-chip">0 lệnh</span>
       </div>
+      <div id="openOrderSummary" class="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"></div>
+      <div id="openOrderQuickFilters" class="no-print mb-3 flex flex-wrap gap-2"></div>
       <div class="table-wrap max-h-[460px]">
         <table>
           <thead>
@@ -591,7 +649,7 @@
     <section id="transactionLogSection" class="dashboard-report panel mb-5 p-4">
       <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 class="text-base font-bold">Nhật ký giao dịch v8 - 1 dòng/lệnh</h2>
+          <h2 class="text-base font-bold">Nhật ký giao dịch v9 - 1 dòng/lệnh</h2>
           <p class="text-xs text-[#667085]">Lệnh đã đóng hiển thị R thực tế theo lời/lỗ; lệnh đang mở hiển thị R:R kế hoạch theo SL/TP.</p>
         </div>
         <span id="transactionCount" class="metric-chip">0 dòng</span>
@@ -639,7 +697,8 @@
       dateBounds: { min: null, max: null },
       warnings: [],
       capital: null,
-      sourceName: ""
+      sourceName: "",
+      openOrderQuickFilter: "all"
     };
 
     const REQUIRED_FIELDS = {
@@ -675,6 +734,20 @@
       paleBlue: "rgba(46, 117, 182, 0.16)",
       paleOrange: "rgba(237, 125, 49, 0.18)"
     };
+
+    const OPEN_ORDER_FILTERS = [
+      { id: "all", label: "Tất cả" },
+      { id: "profit", label: "Đang lãi" },
+      { id: "loss", label: "Đang lỗ" },
+      { id: "missing-sl", label: "Thiếu SL" },
+      { id: "missing-tp", label: "Thiếu TP" },
+      { id: "high-risk", label: "Rủi ro cao" },
+      { id: "high-capital", label: "Tỷ lệ vốn cao" }
+    ];
+
+    const OPEN_ORDER_HIGH_RISK_SL_PCT = -0.03;
+    const OPEN_ORDER_HIGH_CAPITAL_PCT = 0.25;
+    const OPEN_ORDER_NEAR_SL_DISTANCE_PCT = 0.03;
 
     // ===== SECTION: DOM =====
     const els = {
@@ -714,6 +787,10 @@
       dataBadges: document.getElementById("dataBadges"),
       summaryTable: document.getElementById("summaryTable"),
       summaryCount: document.getElementById("summaryCount"),
+      attentionList: document.getElementById("attentionList"),
+      attentionCount: document.getElementById("attentionCount"),
+      openOrderSummary: document.getElementById("openOrderSummary"),
+      openOrderQuickFilters: document.getElementById("openOrderQuickFilters"),
       openOrderTable: document.getElementById("openOrderTable"),
       openOrderCount: document.getElementById("openOrderCount"),
       transactionTable: document.getElementById("transactionTable"),
@@ -864,6 +941,13 @@
 
       [els.positionCapital, els.positionRiskPct, els.positionEntry, els.positionStop, els.positionLotSize].forEach((el) => {
         el.addEventListener("input", renderPositionSizeTool);
+      });
+
+      els.openOrderQuickFilters.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-open-filter]");
+        if (!button) return;
+        state.openOrderQuickFilter = button.dataset.openFilter || "all";
+        renderDashboard();
       });
 
       els.resetFilters.addEventListener("click", resetFilters);
@@ -1499,6 +1583,7 @@
       state.dateBounds = getSystemYearDateRange();
       els.fromDate.value = state.dateBounds.min || "";
       els.toDate.value = state.dateBounds.max || "";
+      state.openOrderQuickFilter = "all";
       applyFilters();
     }
 
@@ -1511,6 +1596,7 @@
       renderDecisionPanel(transactions, analysis);
       renderKpis(transactions, analysis);
       renderCapitalPanel(transactions, analysis);
+      renderAttentionPanel(transactions, analysis);
       renderCharts(transactions, analysis);
       renderSummaryTable(analysis.summary);
       renderPositions(analysis.positions);
@@ -1963,6 +2049,68 @@
       `;
     }
 
+    function renderAttentionPanel(transactions, analysis) {
+      const openRows = getOpenOrderRows();
+      const openItems = openRows.map((row) => ({ row, metrics: getOpenOrderMetrics(row) }));
+      const buyNet = transactions.filter((tx) => tx.side === "buy").reduce((sum, tx) => sum + tx.netValue, 0);
+      const sellNet = transactions.filter((tx) => tx.side === "sell").reduce((sum, tx) => sum + tx.netValue, 0);
+      const estimatedCash = state.capital ? state.capital.amount - buyNet + sellNet : NaN;
+      const uniqueTickers = (items) => [...new Set(items.map((item) => item.row.ticker).filter(Boolean))].slice(0, 4).join(", ") || "N/A";
+      const issues = [];
+      const addIssue = (tone, title, value, detail) => {
+        issues.push({ tone, title, value, detail });
+      };
+
+      const nearSlRows = openItems.filter((item) => item.metrics.nearStopLoss);
+      const highRiskRows = openItems.filter((item) => item.metrics.slRiskPct <= OPEN_ORDER_HIGH_RISK_SL_PCT);
+      const highCapitalRows = openItems.filter((item) => item.metrics.capitalUsage > OPEN_ORDER_HIGH_CAPITAL_PCT);
+      const losingRows = openItems.filter((item) => item.metrics.openPnl < 0);
+      const missingPriceRows = openItems.filter((item) => !Number.isFinite(item.row.currentPrice));
+      const missingSlRows = openItems.filter((item) => !Number.isFinite(item.row.stopLoss));
+      const missingTpRows = openItems.filter((item) => !Number.isFinite(item.row.takeProfit));
+
+      if (Number.isFinite(estimatedCash) && estimatedCash < 0) {
+        addIssue("risk", "Tiền mặt ước tính âm", formatMoney(estimatedCash), "Kiểm tra lại vốn ban đầu hoặc các lệnh mua đang làm vượt vốn trong bộ lọc hiện tại.");
+      }
+      if (nearSlRows.length) {
+        addIssue("risk", "Lệnh gần/chạm SL", `${formatNumber(nearSlRows.length)} lệnh`, `Mã cần xem: ${uniqueTickers(nearSlRows)}.`);
+      }
+      if (highRiskRows.length) {
+        addIssue("risk", "Rủi ro tại SL cao", `${formatNumber(highRiskRows.length)} lệnh`, `Ngưỡng cảnh báo: lỗ tại SL từ ${formatPct(Math.abs(OPEN_ORDER_HIGH_RISK_SL_PCT))} giá vốn trở lên.`);
+      }
+      if (highCapitalRows.length) {
+        addIssue("watch", "Tỷ lệ vốn cao", `${formatNumber(highCapitalRows.length)} lệnh`, `Ngưỡng cảnh báo: mỗi lệnh dùng trên ${formatPct(OPEN_ORDER_HIGH_CAPITAL_PCT)} vốn ban đầu.`);
+      }
+      if (losingRows.length) {
+        addIssue("watch", "Lệnh đang lỗ", `${formatNumber(losingRows.length)} lệnh`, `Dựa trên Gia_hien_tai sau phí bán và thuế bán ước tính 0,2%.`);
+      }
+      if (missingPriceRows.length) {
+        addIssue("watch", "Thiếu Gia_hien_tai", `${formatNumber(missingPriceRows.length)} lệnh`, "Các lệnh này chưa tính được lãi/lỗ tạm tính trong bảng lệnh chưa đóng.");
+      }
+      if (missingSlRows.length) {
+        addIssue("watch", "Thiếu SL", `${formatNumber(missingSlRows.length)} lệnh`, "Thiếu SL làm dashboard không đánh giá được rủi ro tại điểm dừng lỗ.");
+      }
+      if (missingTpRows.length) {
+        addIssue("watch", "Thiếu TP", `${formatNumber(missingTpRows.length)} lệnh`, "Thiếu TP làm dashboard không đánh giá được tỷ lệ lời/lỗ kế hoạch.");
+      }
+
+      if (!openRows.length) {
+        addIssue("good", "Không có lệnh chưa đóng", "0 lệnh", "Bộ lọc hiện tại không còn vị thế mở cần theo dõi.");
+      } else if (!issues.length) {
+        addIssue("good", "Không có cảnh báo nổi bật", `${formatNumber(openRows.length)} lệnh`, "Các lệnh mở hiện có đủ giá hiện tại, SL/TP và chưa vượt ngưỡng rủi ro nhanh.");
+      }
+
+      els.attentionCount.textContent = `${formatNumber(issues.length)} mục`;
+      els.attentionList.innerHTML = issues.map((item) => `
+        <article class="attention-item ${item.tone}">
+          <p class="text-xs font-extrabold uppercase text-[#667085]">${item.tone === "risk" ? "Cần xử lý" : item.tone === "watch" ? "Theo dõi" : "Ổn"}</p>
+          <h3 class="mt-2 text-sm font-extrabold text-[#172033]">${item.title}</h3>
+          <p class="mt-2 text-2xl font-extrabold ${item.tone === "risk" ? "negative" : item.tone === "good" ? "positive" : "neutral"}">${item.value}</p>
+          <p class="mt-2 text-xs leading-5 text-[#667085]">${item.detail}</p>
+        </article>
+      `).join("");
+    }
+
     function renderSummaryTable(summary) {
       els.summaryCount.textContent = `${formatNumber(summary.length)} mã`;
       if (!summary.length) {
@@ -2142,10 +2290,153 @@
       });
     }
 
-    function renderOpenOrders() {
-      const estimatedExitRate = 0.002;
-      const openRows = filterNormalizedTradeRows(buildNormalizedTradeRows(state.transactions))
+    function getOpenOrderRows() {
+      return filterNormalizedTradeRows(buildNormalizedTradeRows(state.transactions))
         .filter((row) => row.status === "open" && !row.sellDate);
+    }
+
+    function getOpenOrderMetrics(row) {
+      const estimatedExitRate = 0.002;
+      const currentValue = Number.isFinite(row.currentPrice) && Number.isFinite(row.qty)
+        ? row.qty * row.currentPrice * (1 - estimatedExitRate)
+        : NaN;
+      const openPnl = Number.isFinite(currentValue) && Number.isFinite(row.costValue)
+        ? currentValue - row.costValue
+        : NaN;
+      const openProfitPct = Number.isFinite(openPnl) && Number.isFinite(row.costValue) && row.costValue
+        ? openPnl / row.costValue
+        : NaN;
+      const stopNetValue = Number.isFinite(row.stopLoss) && Number.isFinite(row.qty)
+        ? row.qty * row.stopLoss * (1 - estimatedExitRate)
+        : NaN;
+      const slPnl = Number.isFinite(stopNetValue) && Number.isFinite(row.costValue)
+        ? stopNetValue - row.costValue
+        : NaN;
+      const slRiskPct = Number.isFinite(slPnl) && Number.isFinite(row.costValue) && row.costValue
+        ? slPnl / row.costValue
+        : NaN;
+      const tpNetValue = Number.isFinite(row.takeProfit) && Number.isFinite(row.qty)
+        ? row.qty * row.takeProfit * (1 - estimatedExitRate)
+        : NaN;
+      const tpPnl = Number.isFinite(tpNetValue) && Number.isFinite(row.costValue)
+        ? tpNetValue - row.costValue
+        : NaN;
+      const capitalUsage = row.capitalUsage;
+      const slDistancePct = Number.isFinite(row.currentPrice) && Number.isFinite(row.stopLoss) && row.currentPrice > 0
+        ? (row.currentPrice - row.stopLoss) / row.currentPrice
+        : NaN;
+      const nearStopLoss = Number.isFinite(row.currentPrice) && Number.isFinite(row.stopLoss)
+        ? row.currentPrice <= row.stopLoss || slDistancePct <= OPEN_ORDER_NEAR_SL_DISTANCE_PCT
+        : false;
+
+      return {
+        currentValue,
+        openPnl,
+        openProfitPct,
+        stopNetValue,
+        slPnl,
+        slRiskPct,
+        tpNetValue,
+        tpPnl,
+        capitalUsage,
+        slDistancePct,
+        nearStopLoss
+      };
+    }
+
+    function matchesOpenOrderFilter(row, metrics, filterId) {
+      switch (filterId) {
+        case "profit":
+          return metrics.openPnl > 0;
+        case "loss":
+          return metrics.openPnl < 0;
+        case "missing-sl":
+          return !Number.isFinite(row.stopLoss);
+        case "missing-tp":
+          return !Number.isFinite(row.takeProfit);
+        case "high-risk":
+          return metrics.slRiskPct <= OPEN_ORDER_HIGH_RISK_SL_PCT;
+        case "high-capital":
+          return metrics.capitalUsage > OPEN_ORDER_HIGH_CAPITAL_PCT;
+        default:
+          return true;
+      }
+    }
+
+    function summarizeOpenOrders(openRows) {
+      const metricsList = openRows.map((row) => ({ row, metrics: getOpenOrderMetrics(row) }));
+      const totalCost = openRows.reduce((sum, row) => Number.isFinite(row.costValue) ? sum + row.costValue : sum, 0);
+      const totalCurrentValue = metricsList.reduce((sum, item) => Number.isFinite(item.metrics.currentValue) ? sum + item.metrics.currentValue : sum, 0);
+      const totalOpenPnl = metricsList.reduce((sum, item) => Number.isFinite(item.metrics.openPnl) ? sum + item.metrics.openPnl : sum, 0);
+      const pricedCost = metricsList.reduce((sum, item) => (
+        Number.isFinite(item.metrics.openPnl) && Number.isFinite(item.row.costValue) ? sum + item.row.costValue : sum
+      ), 0);
+      const missingPrice = metricsList.filter((item) => !Number.isFinite(item.row.currentPrice)).length;
+      const missingSl = metricsList.filter((item) => !Number.isFinite(item.row.stopLoss)).length;
+      const missingTp = metricsList.filter((item) => !Number.isFinite(item.row.takeProfit)).length;
+      const highRisk = metricsList.filter((item) => item.metrics.slRiskPct <= OPEN_ORDER_HIGH_RISK_SL_PCT).length;
+      const highCapital = metricsList.filter((item) => item.metrics.capitalUsage > OPEN_ORDER_HIGH_CAPITAL_PCT).length;
+
+      return {
+        count: openRows.length,
+        totalCost,
+        totalCurrentValue,
+        totalOpenPnl,
+        openProfitPct: pricedCost ? totalOpenPnl / pricedCost : NaN,
+        missingPrice,
+        missingSl,
+        missingTp,
+        highRisk,
+        highCapital
+      };
+    }
+
+    function renderOpenOrderSummary(openRows) {
+      const summary = summarizeOpenOrders(openRows);
+      const warningCount = summary.missingPrice + summary.missingSl + summary.missingTp + summary.highRisk + summary.highCapital;
+      const cards = [
+        ["Lệnh hiển thị", `${formatNumber(summary.count)} lệnh`, "Số lệnh chưa đóng sau khi áp dụng bộ lọc nhanh.", "neutral"],
+        ["Tổng giá vốn", formatMoney(summary.totalCost), "Tổng giá vốn của các lệnh đang hiển thị.", "neutral"],
+        ["Giá trị hiện tại", formatMoney(summary.totalCurrentValue), "Tính theo Gia_hien_tai sau phí bán và thuế bán ước tính 0,2%.", "neutral"],
+        ["P/L tạm tính", formatMoney(summary.totalOpenPnl), "Giá trị hiện tại trừ tổng giá vốn của phần có Gia_hien_tai.", cssClassForValue(summary.totalOpenPnl)],
+        ["% P/L", Number.isFinite(summary.openProfitPct) ? formatPct(summary.openProfitPct) : "N/A", "P/L tạm tính chia cho giá vốn của phần có Gia_hien_tai.", Number.isFinite(summary.openProfitPct) ? cssClassForValue(summary.openProfitPct) : "neutral"],
+        ["Cảnh báo", `${formatNumber(warningCount)} mục`, `Thiếu giá: ${formatNumber(summary.missingPrice)}, thiếu SL: ${formatNumber(summary.missingSl)}, thiếu TP: ${formatNumber(summary.missingTp)}, rủi ro cao: ${formatNumber(summary.highRisk)}, tỷ lệ vốn cao: ${formatNumber(summary.highCapital)}.`, warningCount ? "negative" : "positive"]
+      ];
+
+      els.openOrderSummary.innerHTML = cards.map(([label, value, hint, valueClass]) => `
+        <article class="rounded-lg border border-[#dce6f2] bg-white p-3" title="${hint}">
+          <p class="text-xs font-bold uppercase text-[#667085]">${label}</p>
+          <p class="mt-2 break-words text-lg font-extrabold ${valueClass}">${value}</p>
+          <p class="mt-1 text-xs leading-5 text-[#667085]">${hint}</p>
+        </article>
+      `).join("");
+    }
+
+    function renderOpenOrderQuickFilters(baseRows) {
+      if (!OPEN_ORDER_FILTERS.some((filter) => filter.id === state.openOrderQuickFilter)) {
+        state.openOrderQuickFilter = "all";
+      }
+
+      const items = baseRows.map((row) => ({ row, metrics: getOpenOrderMetrics(row) }));
+      els.openOrderQuickFilters.innerHTML = OPEN_ORDER_FILTERS.map((filter) => {
+        const count = filter.id === "all"
+          ? baseRows.length
+          : items.filter((item) => matchesOpenOrderFilter(item.row, item.metrics, filter.id)).length;
+        const activeClass = filter.id === state.openOrderQuickFilter ? "active" : "";
+        return `
+          <button type="button" class="quick-filter ${activeClass}" data-open-filter="${filter.id}" aria-pressed="${filter.id === state.openOrderQuickFilter}">
+            <span>${filter.label}</span>
+            <span class="count">${formatNumber(count)}</span>
+          </button>
+        `;
+      }).join("");
+    }
+
+    function renderOpenOrders() {
+      const baseRows = getOpenOrderRows();
+      renderOpenOrderQuickFilters(baseRows);
+      const openRows = baseRows.filter((row) => matchesOpenOrderFilter(row, getOpenOrderMetrics(row), state.openOrderQuickFilter));
+      renderOpenOrderSummary(openRows);
 
       els.openOrderCount.textContent = `${formatNumber(openRows.length)} lệnh`;
       if (!openRows.length) {
@@ -2154,15 +2445,7 @@
       }
 
       els.openOrderTable.innerHTML = openRows.map((row) => {
-        const currentValue = Number.isFinite(row.currentPrice) && Number.isFinite(row.qty)
-          ? row.qty * row.currentPrice * (1 - estimatedExitRate)
-          : NaN;
-        const openPnl = Number.isFinite(currentValue) && Number.isFinite(row.costValue)
-          ? currentValue - row.costValue
-          : NaN;
-        const openProfitPct = Number.isFinite(openPnl) && Number.isFinite(row.costValue) && row.costValue
-          ? openPnl / row.costValue
-          : NaN;
+        const metrics = getOpenOrderMetrics(row);
 
         return `
           <tr title="Dòng Excel ${row.rowIndex}. Chỉ hiển thị khi chưa có Ngay_ban; lãi/lỗ tạm tính dùng Gia_hien_tai sau phí bán và thuế bán ước tính 0,2%.">
@@ -2173,9 +2456,9 @@
             <td>${Number.isFinite(row.costPerShare) ? formatMoney(row.costPerShare) : "N/A"}</td>
             <td>${Number.isFinite(row.costValue) ? formatMoney(row.costValue) : "N/A"}</td>
             <td>${Number.isFinite(row.currentPrice) ? formatMoney(row.currentPrice) : "Chưa nhập"}</td>
-            <td>${Number.isFinite(currentValue) ? formatMoney(currentValue) : "N/A"}</td>
-            <td class="font-semibold ${Number.isFinite(openPnl) ? cssClassForValue(openPnl) : "neutral"}">${Number.isFinite(openPnl) ? formatMoney(openPnl) : "N/A"}</td>
-            <td class="font-semibold ${Number.isFinite(openProfitPct) ? cssClassForValue(openProfitPct) : "neutral"}">${Number.isFinite(openProfitPct) ? formatPct(openProfitPct) : "N/A"}</td>
+            <td>${Number.isFinite(metrics.currentValue) ? formatMoney(metrics.currentValue) : "N/A"}</td>
+            <td class="font-semibold ${Number.isFinite(metrics.openPnl) ? cssClassForValue(metrics.openPnl) : "neutral"}">${Number.isFinite(metrics.openPnl) ? formatMoney(metrics.openPnl) : "N/A"}</td>
+            <td class="font-semibold ${Number.isFinite(metrics.openProfitPct) ? cssClassForValue(metrics.openProfitPct) : "neutral"}">${Number.isFinite(metrics.openProfitPct) ? formatPct(metrics.openProfitPct) : "N/A"}</td>
             <td>${Number.isFinite(row.stopLoss) ? formatMoney(row.stopLoss) : "Chưa nhập"}</td>
             <td>${Number.isFinite(row.takeProfit) ? formatMoney(row.takeProfit) : "Chưa nhập"}</td>
           </tr>
@@ -2432,6 +2715,10 @@
       els.kpiCount.textContent = "0 thẻ";
       els.summaryTable.innerHTML = `<tr><td colspan="8" class="text-center text-[#667085]">Hãy tải file Excel để xem dashboard.</td></tr>`;
       els.positionList.innerHTML = `<div class="rounded-lg border border-dashed border-[#dce6f2] p-4 text-sm text-[#667085]">Chưa có dữ liệu vị thế.</div>`;
+      els.attentionCount.textContent = "0 mục";
+      els.attentionList.innerHTML = `<article class="attention-item good"><p class="text-sm font-bold text-[#667085]">Chưa có dữ liệu để đánh giá.</p></article>`;
+      els.openOrderSummary.innerHTML = "";
+      els.openOrderQuickFilters.innerHTML = "";
       els.openOrderTable.innerHTML = `<tr><td colspan="12" class="text-center text-[#667085]">Chưa có dữ liệu lệnh chưa đóng.</td></tr>`;
       els.transactionTable.innerHTML = `<tr><td colspan="13" class="text-center text-[#667085]">Chưa có dữ liệu giao dịch.</td></tr>`;
       els.capitalPanel.classList.add("hidden");
