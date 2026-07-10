@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dashboard hiệu quả đầu tư v9</title>
+  <title>Dashboard hiệu quả đầu tư v10</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -85,6 +85,83 @@
       font-size: 12px;
       color: var(--muted);
       white-space: nowrap;
+    }
+
+    .feature-heading {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .info-dot {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border: 1px solid rgba(46, 117, 182, 0.5);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--blue);
+      font-size: 11px;
+      font-weight: 900;
+      line-height: 1;
+      cursor: help;
+      outline: none;
+      box-shadow: 0 2px 8px rgba(46, 117, 182, 0.08);
+    }
+
+    .info-dot::before,
+    .info-dot::after {
+      position: absolute;
+      left: 50%;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease, transform 0.16s ease;
+      z-index: 80;
+    }
+
+    .info-dot::after {
+      content: attr(data-help);
+      bottom: calc(100% + 10px);
+      width: min(300px, calc(100vw - 40px));
+      transform: translateX(-50%) translateY(4px);
+      border: 1px solid rgba(23, 32, 51, 0.14);
+      border-radius: 8px;
+      background: #172033;
+      color: #fff;
+      padding: 9px 11px;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.45;
+      text-align: left;
+      text-transform: none;
+      white-space: normal;
+      box-shadow: 0 14px 32px rgba(23, 32, 51, 0.18);
+    }
+
+    .info-dot::before {
+      content: "";
+      bottom: calc(100% + 4px);
+      transform: translateX(-50%) translateY(4px);
+      border: 6px solid transparent;
+      border-top-color: #172033;
+    }
+
+    .info-dot:hover,
+    .info-dot:focus-visible {
+      border-color: var(--blue);
+      background: var(--soft-blue);
+    }
+
+    .info-dot:hover::before,
+    .info-dot:hover::after,
+    .info-dot:focus-visible::before,
+    .info-dot:focus-visible::after {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
     }
 
     .control {
@@ -300,7 +377,8 @@
 
       .no-print,
       #dropzone,
-      #messageBox {
+      #messageBox,
+      .info-dot {
         display: none !important;
       }
 
@@ -347,7 +425,7 @@
     <header class="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
       <div>
         <p class="text-sm font-semibold uppercase text-[#ED7D31]">File Excel giao dịch cổ phiếu</p>
-        <h1 class="mt-1 text-2xl font-extrabold text-[#172033] md:text-4xl">Dashboard hiệu quả đầu tư v9</h1>
+        <h1 class="mt-1 text-2xl font-extrabold text-[#172033] md:text-4xl">Dashboard hiệu quả đầu tư v10</h1>
         <div class="mt-3 flex flex-wrap gap-2" id="dataBadges">
           <span class="metric-chip">Chưa có dữ liệu</span>
         </div>
@@ -365,7 +443,7 @@
     <section id="dropzone" class="dropzone mb-5 p-5 md:p-7">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 class="text-lg font-bold text-[#172033]">Kéo-thả file `_Data.xlsx` vào đây</h2>
+          <h2 class="feature-heading text-lg font-bold text-[#172033]">Kéo-thả file `_Data_chi_du_lieu.xlsx` vào đây <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Nạp dữ liệu Excel vào dashboard để các chỉ số, bảng và biểu đồ được tính lại theo workbook thật." data-help="Nạp dữ liệu Excel vào dashboard để các chỉ số, bảng và biểu đồ được tính lại theo workbook thật.">!</span></h2>
           <p class="mt-1 max-w-3xl text-sm text-[#667085]">
             Dashboard đọc trực tiếp file Excel trong trình duyệt, tự tìm sheet giao dịch và đọc thêm sheet `Von` nếu có.
           </p>
@@ -383,7 +461,7 @@
     <section id="positionSizeTool" class="no-print panel mb-5 p-4">
       <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 class="text-base font-bold">Công cụ tính khối lượng vào lệnh</h2>
+          <h2 class="feature-heading text-base font-bold">Công cụ tính khối lượng vào lệnh <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Ước tính khối lượng mua theo vốn, mức rủi ro, giá mua và SL trước khi vào lệnh." data-help="Ước tính khối lượng mua theo vốn, mức rủi ro, giá mua và SL trước khi vào lệnh.">!</span></h2>
           <p class="text-xs text-[#667085]">Rủi ro tính theo khoảng cách từ giá mua đến SL và làm tròn xuống theo bước lô.</p>
         </div>
         <span class="metric-chip">Nhập tay</span>
@@ -418,7 +496,7 @@
       <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p class="text-xs font-extrabold uppercase tracking-wide text-[#2E75B6]">Đánh giá nhanh</p>
-          <h2 class="mt-1 text-xl font-extrabold md:text-2xl">Khoản đầu tư có hiệu quả không?</h2>
+          <h2 class="feature-heading mt-1 text-xl font-extrabold md:text-2xl">Khoản đầu tư có hiệu quả không? <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Tóm tắt sức khỏe đầu tư bằng P/L hiện tại, ROI, kịch bản SL/TP, win rate và profit factor." data-help="Tóm tắt sức khỏe đầu tư bằng P/L hiện tại, ROI, kịch bản SL/TP, win rate và profit factor.">!</span></h2>
           <p id="decisionSubtitle" class="mt-1 text-sm text-[#667085]">Tính sau phí mua, phí bán và thuế bán.</p>
         </div>
         <span id="decisionStatus" class="status-pill status-empty">CHƯA CÓ DỮ LIỆU</span>
@@ -473,7 +551,7 @@
         </div>
 
         <div class="rounded-lg border border-[#dce6f2] bg-white p-3 xl:col-span-2">
-          <h3 class="text-sm font-extrabold">Ba kịch bản lãi/lỗ</h3>
+          <h3 class="feature-heading text-sm font-extrabold">Ba kịch bản lãi/lỗ <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: So sánh kết quả nếu vị thế chạm SL, theo giá hiện tại hoặc chạm TP để hiểu nhanh vùng rủi ro/lợi nhuận." data-help="So sánh kết quả nếu vị thế chạm SL, theo giá hiện tại hoặc chạm TP để hiểu nhanh vùng rủi ro/lợi nhuận.">!</span></h3>
           <p class="mt-1 text-xs text-[#667085]">So sánh SL, giá hiện tại và TP sau chi phí.</p>
           <div class="mt-2 h-[250px]"><canvas id="scenarioChart"></canvas></div>
           <div id="decisionReasons" class="mt-2 space-y-1 text-xs leading-5 text-[#667085]"></div>
@@ -483,6 +561,9 @@
     </section>
 
     <section id="dashboardFilters" class="no-print panel filter-panel mb-5 p-4">
+      <div class="mb-3">
+        <h2 class="feature-heading text-base font-bold">Bộ lọc dashboard <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Thu hẹp báo cáo theo mã, loại lệnh, trạng thái và khoảng ngày để đọc đúng phần dữ liệu cần xem." data-help="Thu hẹp báo cáo theo mã, loại lệnh, trạng thái và khoảng ngày để đọc đúng phần dữ liệu cần xem.">!</span></h2>
+      </div>
       <div class="grid gap-3 md:grid-cols-6">
         <label class="block">
           <span class="mb-1 block text-xs font-bold uppercase text-[#667085]">Mã cổ phiếu</span>
@@ -523,7 +604,7 @@
     <section id="kpiSection" class="dashboard-report mb-5">
       <div class="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h2 class="text-base font-bold">Thẻ số liệu</h2>
+          <h2 class="feature-heading text-base font-bold">Thẻ số liệu <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Gom các KPI lớn để nhìn nhanh hiệu quả, vốn mở, phí, vòng quay và P/L tạm tính." data-help="Gom các KPI lớn để nhìn nhanh hiệu quả, vốn mở, phí, vòng quay và P/L tạm tính.">!</span></h2>
         </div>
         <span id="kpiCount" class="metric-chip">0 thẻ</span>
       </div>
@@ -535,7 +616,7 @@
     <section id="attentionPanel" class="dashboard-report panel mb-5 p-4">
       <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 class="text-base font-bold">Việc cần chú ý hôm nay</h2>
+          <h2 class="feature-heading text-base font-bold">Việc cần chú ý hôm nay <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Đưa các cảnh báo cần xem trước lên đầu như gần SL, thiếu giá hiện tại, thiếu SL/TP, rủi ro cao và tỷ lệ vốn cao." data-help="Đưa các cảnh báo cần xem trước lên đầu như gần SL, thiếu giá hiện tại, thiếu SL/TP, rủi ro cao và tỷ lệ vốn cao.">!</span></h2>
           <p class="text-xs text-[#667085]">Tự động gom các điểm cần xem trước: lệnh gần SL, thiếu giá hiện tại, thiếu SL/TP, rủi ro cao và tỷ lệ vốn cao.</p>
         </div>
         <span id="attentionCount" class="metric-chip">0 mục</span>
@@ -547,7 +628,7 @@
       <div class="panel p-4">
         <div class="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h2 class="text-base font-bold">Lãi/lỗ sau phí thuế theo mã</h2>
+            <h2 class="feature-heading text-base font-bold">Lãi/lỗ sau phí thuế theo mã <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: So sánh mã nào đang đóng góp lãi/lỗ đã chốt sau khi tính FIFO, phí và thuế." data-help="So sánh mã nào đang đóng góp lãi/lỗ đã chốt sau khi tính FIFO, phí và thuế.">!</span></h2>
             <p class="text-xs text-[#667085]">Tính theo phương pháp FIFO sau phí mua, phí bán và thuế bán.</p>
           </div>
         </div>
@@ -555,21 +636,21 @@
       </div>
       <div class="panel p-4">
         <div class="mb-3">
-          <h2 class="text-base font-bold">Cơ cấu giá trị giao dịch</h2>
+          <h2 class="feature-heading text-base font-bold">Cơ cấu giá trị giao dịch <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Cho biết dòng tiền mua/bán tập trung vào mã nào để nhận diện mức độ phân bổ giao dịch." data-help="Cho biết dòng tiền mua/bán tập trung vào mã nào để nhận diện mức độ phân bổ giao dịch.">!</span></h2>
           <p class="text-xs text-[#667085]">Tổng giá trị mua và bán theo từng mã cổ phiếu.</p>
         </div>
         <div class="chart-box"><canvas id="turnoverChart"></canvas></div>
       </div>
       <div class="panel p-4">
         <div class="mb-3">
-          <h2 class="text-base font-bold">Dòng tiền mua / bán theo ngày</h2>
+          <h2 class="feature-heading text-base font-bold">Dòng tiền mua / bán theo ngày <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Theo dõi ngày nào dòng tiền vào/ra lớn để xem nhịp giải ngân và thu tiền." data-help="Theo dõi ngày nào dòng tiền vào/ra lớn để xem nhịp giải ngân và thu tiền.">!</span></h2>
           <p class="text-xs text-[#667085]">Theo ngày giao dịch trong file Excel.</p>
         </div>
         <div class="chart-box"><canvas id="cashflowChart"></canvas></div>
       </div>
       <div class="panel p-4">
         <div class="mb-3">
-          <h2 class="text-base font-bold">Lãi/lỗ lũy kế</h2>
+          <h2 class="feature-heading text-base font-bold">Lãi/lỗ lũy kế <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Nhìn xu hướng kết quả đã chốt theo thời gian, giúp thấy hiệu quả đang cải thiện hay xấu đi." data-help="Nhìn xu hướng kết quả đã chốt theo thời gian, giúp thấy hiệu quả đang cải thiện hay xấu đi.">!</span></h2>
           <p class="text-xs text-[#667085]">Chỉ ghi nhận khi có lệnh bán khớp với lượng mua trước đó.</p>
         </div>
         <div class="chart-box"><canvas id="cumPnlChart"></canvas></div>
@@ -580,7 +661,7 @@
       <div class="panel p-4 xl:col-span-2">
         <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 class="text-base font-bold">Hiệu quả theo mã</h2>
+            <h2 class="feature-heading text-base font-bold">Hiệu quả theo mã <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: So sánh từng mã theo mua, bán, phí, lãi/lỗ, ROI, tỷ lệ thắng và vị thế còn lại." data-help="So sánh từng mã theo mua, bán, phí, lãi/lỗ, ROI, tỷ lệ thắng và vị thế còn lại.">!</span></h2>
             <p class="text-xs text-[#667085]">So sánh giá trị mua, bán, lãi/lỗ, ROI và tỷ lệ thắng.</p>
           </div>
           <span id="summaryCount" class="metric-chip">0 mã</span>
@@ -606,7 +687,7 @@
 
       <div class="panel p-4">
         <div class="mb-3">
-          <h2 class="text-base font-bold">Vị thế đang nắm giữ</h2>
+          <h2 class="feature-heading text-base font-bold">Vị thế đang nắm giữ <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Theo dõi các mã còn mở ở cấp tổng hợp, gồm giá vốn, P/L tạm tính, tỷ lệ vốn, SL và TP." data-help="Theo dõi các mã còn mở ở cấp tổng hợp, gồm giá vốn, P/L tạm tính, tỷ lệ vốn, SL và TP.">!</span></h2>
           <p class="text-xs text-[#667085]">Tạm tính theo cột Gia_hien_tai; nếu thiếu thì dùng giá giao dịch gần nhất trong file.</p>
         </div>
         <div id="positionList" class="space-y-3"></div>
@@ -616,7 +697,7 @@
     <section id="openOrderSection" class="dashboard-report panel mb-5 p-4">
       <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 class="text-base font-bold">Bảng lệnh chưa đóng</h2>
+          <h2 class="feature-heading text-base font-bold">Bảng lệnh chưa đóng <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Xem từng lệnh chưa có Ngay_ban, dùng Gia_hien_tai để biết đang lãi/lỗ bao nhiêu và còn thiếu SL/TP không." data-help="Xem từng lệnh chưa có Ngay_ban, dùng Gia_hien_tai để biết đang lãi/lỗ bao nhiêu và còn thiếu SL/TP không.">!</span></h2>
           <p class="text-xs text-[#667085]">Chỉ hiển thị các dòng chưa có Ngay_ban; lãi/lỗ tạm tính lấy Gia_hien_tai làm giá tham chiếu.</p>
         </div>
         <span id="openOrderCount" class="metric-chip">0 lệnh</span>
@@ -649,7 +730,7 @@
     <section id="transactionLogSection" class="dashboard-report panel mb-5 p-4">
       <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 class="text-base font-bold">Nhật ký giao dịch v9 - 1 dòng/lệnh</h2>
+          <h2 class="feature-heading text-base font-bold">Nhật ký giao dịch v10 - 1 dòng/lệnh <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Liệt kê từng lệnh mua/bán để kiểm tra trạng thái, giá vốn, lãi/lỗ, phần trăm lợi nhuận và R:R." data-help="Liệt kê từng lệnh mua/bán để kiểm tra trạng thái, giá vốn, lãi/lỗ, phần trăm lợi nhuận và R:R.">!</span></h2>
           <p class="text-xs text-[#667085]">Lệnh đã đóng hiển thị R thực tế theo lời/lỗ; lệnh đang mở hiển thị R:R kế hoạch theo SL/TP.</p>
         </div>
         <span id="transactionCount" class="metric-chip">0 dòng</span>
@@ -680,7 +761,7 @@
 
     <section id="explainSection" class="dashboard-report panel p-4">
       <div class="mb-4">
-        <h2 class="text-base font-bold">Ý nghĩa đánh giá hiệu quả đầu tư</h2>
+        <h2 class="feature-heading text-base font-bold">Ý nghĩa đánh giá hiệu quả đầu tư <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Là phần từ điển giải thích các chỉ số để người đọc hiểu công thức và cách dùng trong quyết định." data-help="Là phần từ điển giải thích các chỉ số để người đọc hiểu công thức và cách dùng trong quyết định.">!</span></h2>
         <p class="text-xs text-[#667085]">Các chỉ số dùng để Giám đốc vận hành nhìn nhanh chất lượng giao dịch và rủi ro vận hành.</p>
       </div>
       <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3" id="explainGrid"></div>
@@ -1079,92 +1160,6 @@
         || normalizedMap.find(({ normalized }) => (
           normalizedAliases.some((alias) => normalized.startsWith(`${alias}_`))
         ));
-    }
-
-    function normalizeRows(rows) {
-      const headers = Object.keys(rows[0] || {});
-      const fieldMap = buildFieldMap(headers);
-
-      const missing = Object.keys(REQUIRED_FIELDS).filter((field) => !fieldMap[field]);
-      if (missing.length) {
-        throw new Error(`File Excel thiếu cột bắt buộc: ${missing.join(", ")}. Cần có Ma_cp, Loai_lenh, ngay, So_luong, Gia.`);
-      }
-
-      const warnings = [];
-      const transactions = rows.map((row, index) => {
-        const isBlankRow = Object.values(fieldMap).every((fieldName) => {
-          const value = row[fieldName];
-          return value === "" || value === null || value === undefined;
-        });
-        if (isBlankRow) return null;
-
-        const ticker = String(row[fieldMap.ticker] || "").trim().toUpperCase();
-        const sideRaw = String(row[fieldMap.side] || "").trim();
-        const side = parseSide(sideRaw);
-        const date = parseExcelDate(row[fieldMap.date]);
-        const qty = parseNumeric(row[fieldMap.qty]);
-        const price = parseNumeric(row[fieldMap.price]);
-        const currentPriceRaw = fieldMap.currentPrice ? row[fieldMap.currentPrice] : "";
-        const hasCurrentPrice = currentPriceRaw !== "" && currentPriceRaw !== null && currentPriceRaw !== undefined;
-        const parsedCurrentPrice = hasCurrentPrice ? parseNumeric(currentPriceRaw) : NaN;
-        const currentPrice = Number.isFinite(parsedCurrentPrice) && parsedCurrentPrice > 0 ? parsedCurrentPrice : null;
-        const stopLossRaw = fieldMap.stopLoss ? row[fieldMap.stopLoss] : "";
-        const takeProfitRaw = fieldMap.takeProfit ? row[fieldMap.takeProfit] : "";
-        const parsedStopLoss = parseNumeric(stopLossRaw);
-        const parsedTakeProfit = parseNumeric(takeProfitRaw);
-        const stopLoss = Number.isFinite(parsedStopLoss) && parsedStopLoss > 0 ? parsedStopLoss : null;
-        const takeProfit = Number.isFinite(parsedTakeProfit) && parsedTakeProfit > 0 ? parsedTakeProfit : null;
-        const grossValue = qty * price;
-        const buyFee = parseOptionalCharge(row, fieldMap.buyFee, side === "buy" ? grossValue * 0.001 : 0);
-        const sellFee = parseOptionalCharge(row, fieldMap.sellFee, side === "sell" ? grossValue * 0.001 : 0);
-        const sellTax = parseOptionalCharge(row, fieldMap.sellTax, side === "sell" ? grossValue * 0.001 : 0);
-        const id = row.ID || row.Id || row.id || index + 1;
-
-        const invalidReasons = [];
-        if (!ticker) invalidReasons.push("thiếu mã");
-        if (!side) invalidReasons.push("loại lệnh phải là Mua/Bán");
-        if (!date) invalidReasons.push("ngày không hợp lệ");
-        if (!Number.isFinite(qty) || qty <= 0) invalidReasons.push("số lượng phải > 0");
-        if (!Number.isFinite(price) || price <= 0) invalidReasons.push("giá phải > 0");
-        if (![buyFee, sellFee, sellTax].every((value) => Number.isFinite(value) && value >= 0)) invalidReasons.push("phí/thuế phải >= 0");
-        if (hasCurrentPrice && currentPrice === null) {
-          warnings.push(`Dòng ${index + 2}: Gia_hien_tai không hợp lệ, dashboard sẽ dùng giá giao dịch gần nhất nếu cần.`);
-        }
-
-        if (invalidReasons.length) {
-          warnings.push(`Dòng ${index + 2}: ${invalidReasons.join(", ")}.`);
-          return null;
-        }
-
-        return {
-          id,
-          rowIndex: index + 2,
-          ticker,
-          side,
-          sideLabel: side === "buy" ? "Mua" : "Bán",
-          date,
-          isoDate: toISODate(date),
-          qty,
-          price,
-          currentPrice,
-          stopLoss,
-          takeProfit,
-          value: grossValue,
-          buyFee,
-          sellFee,
-          sellTax,
-          charges: buyFee + sellFee + sellTax,
-          netValue: side === "buy" ? grossValue + buyFee : grossValue - sellFee - sellTax
-        };
-      }).filter(Boolean);
-
-      transactions.sort((a, b) => {
-        const byDate = a.date - b.date;
-        if (byDate !== 0) return byDate;
-        return Number(a.id) - Number(b.id);
-      });
-
-      return { transactions, warnings };
     }
 
     function normalizeRows(rows) {
@@ -2032,7 +2027,7 @@
       els.capitalPanel.innerHTML = `
         <div class="mb-3 flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
           <div>
-            <h2 class="text-base font-bold">Báo cáo vốn</h2>
+            <h2 class="feature-heading text-base font-bold">Báo cáo vốn <span class="info-dot" tabindex="0" role="note" aria-label="Ý nghĩa: Ghép vốn ban đầu với mua/bán, tiền mặt ước tính, NAV và ROI trên vốn để xem mức sử dụng vốn." data-help="Ghép vốn ban đầu với mua/bán, tiền mặt ước tính, NAV và ROI trên vốn để xem mức sử dụng vốn.">!</span></h2>
             <p class="text-xs text-[#667085]">Kết hợp sheet vốn với giao dịch đang được lọc trong dashboard.</p>
           </div>
           <span class="metric-chip">Nguồn: ${state.capital.sheetName}</span>
