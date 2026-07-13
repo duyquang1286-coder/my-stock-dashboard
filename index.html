@@ -849,6 +849,7 @@
       sourceName: "",
       workbook: null,
       workbookName: "",
+      workbookLoadedAt: null,
       transactionSheets: [],
       selectedSheet: "",
       openOrderQuickFilter: "all",
@@ -973,6 +974,13 @@
       style: "percent",
       maximumFractionDigits: 2
     });
+    const dateTimeFormatter = new Intl.DateTimeFormat("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
 
     function formatMoney(value) {
       return moneyFormatter.format(Number.isFinite(value) ? value : 0).replace("₫", "₫");
@@ -1000,6 +1008,11 @@
     function displayDate(date) {
       if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "N/A";
       return date.toLocaleDateString("vi-VN");
+    }
+
+    function formatDateTime(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? "N/A" : dateTimeFormatter.format(date);
     }
 
     function normalizeHeader(value) {
@@ -1163,7 +1176,7 @@
       });
     }
 
-    async function saveWorkbookCache(file, buffer) {
+    async function saveWorkbookCache(file, buffer, loadedAt) {
       const db = await openWorkbookCache();
       try {
         await new Promise((resolve, reject) => {
@@ -1172,7 +1185,7 @@
             name: file.name,
             type: file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             lastModified: file.lastModified || Date.now(),
-            savedAt: Date.now(),
+            savedAt: loadedAt,
             buffer
           }, WORKBOOK_CACHE_KEY);
           transaction.oncomplete = () => resolve();
@@ -1206,7 +1219,7 @@
           type: cached.type,
           lastModified: cached.lastModified
         });
-        await readExcelFile(file, { persist: false, restored: true });
+        await readExcelFile(file, { persist: false, restored: true, loadedAt: cached.savedAt });
       } catch (error) {
         console.warn("Không thể khôi phục file Excel đã lưu:", error);
       }
@@ -1234,6 +1247,7 @@
 
         state.workbook = workbook;
         state.workbookName = file.name;
+        state.workbookLoadedAt = Number.isFinite(options.loadedAt) ? options.loadedAt : Date.now();
         state.transactionSheets = transactionSheets.map((item) => item.name);
         state.capital = extractCapital(workbook);
         if (state.capital) {
@@ -1250,14 +1264,14 @@
         let storageText = options.restored ? " Đã tự nạp file được lưu từ lần sử dụng trước." : "";
         if (options.persist !== false) {
           try {
-            await saveWorkbookCache(file, buffer);
+            await saveWorkbookCache(file, buffer, state.workbookLoadedAt);
             storageText = " File này đã được lưu trong trình duyệt và sẽ tự nạp ở lần mở sau.";
           } catch (storageError) {
             storageText = " Trình duyệt không cho phép lưu tự động; dữ liệu hiện tại vẫn dùng bình thường.";
             console.warn("Không thể lưu file Excel:", storageError);
           }
         }
-        showMessage(`Đã đọc ${formatNumber(state.transactions.length)} giao dịch chuẩn hóa từ sheet "${preferredSheet.name}".${capitalText}${storageText}`, "success");
+        showMessage(`Đã đọc ${formatNumber(state.transactions.length)} giao dịch chuẩn hóa từ sheet "${preferredSheet.name}". Ngày nạp file: ${formatDateTime(state.workbookLoadedAt)}.${capitalText}${storageText}`, "success");
       } catch (error) {
         if (loadSequence !== state.fileLoadSequence) return;
         state.transactions = [];
@@ -1265,6 +1279,7 @@
         state.capital = null;
         state.workbook = null;
         state.workbookName = "";
+        state.workbookLoadedAt = null;
         state.transactionSheets = [];
         state.selectedSheet = "";
         setupSheetSelector([], "");
@@ -2134,6 +2149,7 @@
         `${formatMoney(realizedPnl)} lãi/lỗ sau phí thuế`
       ];
       if (state.capital) badges.push(`${formatMoney(state.capital.amount)} vốn ban đầu`);
+      if (state.workbookLoadedAt) badges.push(`Nạp file: ${formatDateTime(state.workbookLoadedAt)}`);
       els.dataBadges.innerHTML = badges.map((text) => `<span class="metric-chip">${text}</span>`).join("");
     }
 
