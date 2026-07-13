@@ -849,12 +849,9 @@
       sourceName: "",
       workbook: null,
       workbookName: "",
-      workbookLoadedAt: null,
       transactionSheets: [],
       selectedSheet: "",
-      openOrderQuickFilter: "all",
-      manualFileLoadStarted: false,
-      fileLoadSequence: 0
+      openOrderQuickFilter: "all"
     };
 
     const REQUIRED_FIELDS = {
@@ -906,9 +903,6 @@
     const OPEN_ORDER_HIGH_CAPITAL_PCT = 0.25;
     const OPEN_ORDER_NEAR_SL_DISTANCE_PCT = 0.03;
     const MIN_CLOSED_TRADES_FOR_STRATEGY = 5;
-    const WORKBOOK_CACHE_DB = "dashboard-v13-cache";
-    const WORKBOOK_CACHE_STORE = "workbooks";
-    const WORKBOOK_CACHE_KEY = "latest";
 
     // ===== SECTION: DOM =====
     const els = {
@@ -974,13 +968,6 @@
       style: "percent",
       maximumFractionDigits: 2
     });
-    const dateTimeFormatter = new Intl.DateTimeFormat("vi-VN", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
 
     function formatMoney(value) {
       return moneyFormatter.format(Number.isFinite(value) ? value : 0).replace("₫", "₫");
@@ -1008,11 +995,6 @@
     function displayDate(date) {
       if (!(date instanceof Date) || Number.isNaN(date.getTime())) return "N/A";
       return date.toLocaleDateString("vi-VN");
-    }
-
-    function formatDateTime(value) {
-      const date = new Date(value);
-      return Number.isNaN(date.getTime()) ? "N/A" : dateTimeFormatter.format(date);
     }
 
     function normalizeHeader(value) {
@@ -1158,76 +1140,7 @@
         : "Tải file Excel trước, sau đó in hoặc lưu dashboard thành PDF";
     }
 
-    function openWorkbookCache() {
-      return new Promise((resolve, reject) => {
-        if (!window.indexedDB) {
-          reject(new Error("Trình duyệt không hỗ trợ vùng lưu dữ liệu cục bộ."));
-          return;
-        }
-        const request = window.indexedDB.open(WORKBOOK_CACHE_DB, 1);
-        request.onupgradeneeded = () => {
-          const db = request.result;
-          if (!db.objectStoreNames.contains(WORKBOOK_CACHE_STORE)) {
-            db.createObjectStore(WORKBOOK_CACHE_STORE);
-          }
-        };
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error || new Error("Không mở được vùng lưu dữ liệu cục bộ."));
-      });
-    }
-
-    async function saveWorkbookCache(file, buffer, loadedAt) {
-      const db = await openWorkbookCache();
-      try {
-        await new Promise((resolve, reject) => {
-          const transaction = db.transaction(WORKBOOK_CACHE_STORE, "readwrite");
-          transaction.objectStore(WORKBOOK_CACHE_STORE).put({
-            name: file.name,
-            type: file.type || "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            lastModified: file.lastModified || Date.now(),
-            savedAt: loadedAt,
-            buffer
-          }, WORKBOOK_CACHE_KEY);
-          transaction.oncomplete = () => resolve();
-          transaction.onerror = () => reject(transaction.error || new Error("Không lưu được file Excel."));
-          transaction.onabort = () => reject(transaction.error || new Error("Việc lưu file Excel đã bị hủy."));
-        });
-      } finally {
-        db.close();
-      }
-    }
-
-    async function getWorkbookCache() {
-      const db = await openWorkbookCache();
-      try {
-        return await new Promise((resolve, reject) => {
-          const transaction = db.transaction(WORKBOOK_CACHE_STORE, "readonly");
-          const request = transaction.objectStore(WORKBOOK_CACHE_STORE).get(WORKBOOK_CACHE_KEY);
-          request.onsuccess = () => resolve(request.result || null);
-          request.onerror = () => reject(request.error || new Error("Không đọc được file Excel đã lưu."));
-        });
-      } finally {
-        db.close();
-      }
-    }
-
-    async function restoreWorkbookCache() {
-      try {
-        const cached = await getWorkbookCache();
-        if (!cached?.buffer || state.workbookName || state.manualFileLoadStarted) return;
-        const file = new File([cached.buffer], cached.name || "du-lieu-da-luu.xlsx", {
-          type: cached.type,
-          lastModified: cached.lastModified
-        });
-        await readExcelFile(file, { persist: false, restored: true, loadedAt: cached.savedAt });
-      } catch (error) {
-        console.warn("Không thể khôi phục file Excel đã lưu:", error);
-      }
-    }
-
-    async function readExcelFile(file, options = {}) {
-      if (options.manual !== false && !options.restored) state.manualFileLoadStarted = true;
-      const loadSequence = ++state.fileLoadSequence;
+    async function readExcelFile(file) {
       try {
         hideMessage();
         if (!window.XLSX) {
@@ -1243,11 +1156,8 @@
         if (!transactionSheets.length) {
           throw new Error("Không tìm thấy sheet giao dịch. Sheet cần có các cột Ma_cp, Loai_lenh, Ngay_Mua, So_luong, Gia_mua. Nếu có Ngay_ban thì dashboard xem là Đã đóng.");
         }
-        if (loadSequence !== state.fileLoadSequence) return;
-
         state.workbook = workbook;
         state.workbookName = file.name;
-        state.workbookLoadedAt = Number.isFinite(options.loadedAt) ? options.loadedAt : Date.now();
         state.transactionSheets = transactionSheets.map((item) => item.name);
         state.capital = extractCapital(workbook);
         if (state.capital) {
@@ -1261,25 +1171,13 @@
         }
         updatePrintPdfButton();
         const capitalText = state.capital ? ` Vốn ban đầu: ${formatMoney(state.capital.amount)} từ sheet "${state.capital.sheetName}".` : " Chưa tìm thấy sheet vốn.";
-        let storageText = options.restored ? " Đã tự nạp file được lưu từ lần sử dụng trước." : "";
-        if (options.persist !== false) {
-          try {
-            await saveWorkbookCache(file, buffer, state.workbookLoadedAt);
-            storageText = " File này đã được lưu trong trình duyệt và sẽ tự nạp ở lần mở sau.";
-          } catch (storageError) {
-            storageText = " Trình duyệt không cho phép lưu tự động; dữ liệu hiện tại vẫn dùng bình thường.";
-            console.warn("Không thể lưu file Excel:", storageError);
-          }
-        }
-        showMessage(`Đã đọc ${formatNumber(state.transactions.length)} giao dịch chuẩn hóa từ sheet "${preferredSheet.name}". Ngày nạp file: ${formatDateTime(state.workbookLoadedAt)}.${capitalText}${storageText}`, "success");
+        showMessage(`Đã đọc ${formatNumber(state.transactions.length)} giao dịch chuẩn hóa từ sheet "${preferredSheet.name}".${capitalText}`, "success");
       } catch (error) {
-        if (loadSequence !== state.fileLoadSequence) return;
         state.transactions = [];
         state.filtered = [];
         state.capital = null;
         state.workbook = null;
         state.workbookName = "";
-        state.workbookLoadedAt = null;
         state.transactionSheets = [];
         state.selectedSheet = "";
         setupSheetSelector([], "");
@@ -2149,7 +2047,6 @@
         `${formatMoney(realizedPnl)} lãi/lỗ sau phí thuế`
       ];
       if (state.capital) badges.push(`${formatMoney(state.capital.amount)} vốn ban đầu`);
-      if (state.workbookLoadedAt) badges.push(`Nạp file: ${formatDateTime(state.workbookLoadedAt)}`);
       els.dataBadges.innerHTML = badges.map((text) => `<span class="metric-chip">${text}</span>`).join("");
     }
 
@@ -3067,7 +2964,6 @@
     // ===== SECTION: INIT =====
     bindEvents();
     renderEmpty();
-    restoreWorkbookCache();
   </script>
 </body>
 </html>
