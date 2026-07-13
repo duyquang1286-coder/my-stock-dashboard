@@ -1156,6 +1156,7 @@
         if (!transactionSheets.length) {
           throw new Error("Không tìm thấy sheet giao dịch. Sheet cần có các cột Ma_cp, Loai_lenh, Ngay_Mua, So_luong, Gia_mua. Nếu có Ngay_ban thì dashboard xem là Đã đóng.");
         }
+
         state.workbook = workbook;
         state.workbookName = file.name;
         state.transactionSheets = transactionSheets.map((item) => item.name);
